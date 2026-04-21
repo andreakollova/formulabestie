@@ -192,6 +192,139 @@
   inset: 0;
 }
 
+/* ── Watch Party Teaser ── */
+.wp-section { }
+.wp-head { margin-bottom: 40px; }
+.wp-kicker {
+  font-family: var(--font-mono);
+  font-size: 9px; font-weight: 600;
+  letter-spacing: .28em; text-transform: uppercase;
+  color: var(--color-red); margin-bottom: 8px;
+}
+.wp-title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 900; letter-spacing: -0.03em;
+  color: var(--color-ink); line-height: 1;
+  margin-bottom: 16px;
+}
+.wp-title em { font-style: italic; color: var(--color-red); }
+.wp-rule { height: 3px; background: var(--color-red); }
+
+.wp-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: start;
+}
+
+/* Description side */
+.wp-lead {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 2.5vw, 30px);
+  font-weight: 700; line-height: 1.2;
+  color: var(--color-ink);
+  margin-bottom: 20px;
+}
+.wp-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm); line-height: 1.65;
+  color: var(--color-muted);
+  margin-bottom: 32px;
+  max-width: 420px;
+}
+.wp-features { display: flex; flex-direction: column; gap: 12px; }
+.wp-feature {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--color-ink);
+}
+.wp-feature-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+
+/* Chat mockup */
+.wp-chat-preview {
+  border: var(--border-2ink);
+  overflow: hidden;
+}
+.wp-chat-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px;
+  background: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.wp-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--color-red);
+  animation: livePulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: .4; }
+  50%       { opacity: 1; }
+}
+.wp-live-label { color: var(--color-red); }
+.wp-chat-title { color: rgba(255,255,255,.6); flex: 1; }
+.wp-online { color: rgba(255,255,255,.35); font-size: 9px; }
+
+.wp-chat-body {
+  background: #fff;
+  padding: 20px 18px;
+  display: flex; flex-direction: column; gap: 16px;
+  border-bottom: var(--border);
+}
+.wp-msg { display: flex; gap: 10px; align-items: flex-start; }
+.wp-msg-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  flex-shrink: 0; margin-top: 5px;
+}
+.wp-msg-content { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.wp-msg-name {
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .08em; color: var(--color-ink);
+}
+.wp-msg-team {
+  font-family: var(--font-mono);
+  font-size: 9px; color: var(--color-muted);
+  letter-spacing: .04em;
+}
+.wp-msg-text {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 13px; line-height: 1.4;
+  color: var(--color-ink);
+  margin: 0;
+}
+.wp-msg-time {
+  font-family: var(--font-mono);
+  font-size: 9px; color: var(--color-muted);
+}
+
+.wp-chat-input {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  background: #fff;
+  font-family: var(--font-sans);
+}
+.wp-input-placeholder {
+  font-size: 13px; color: var(--color-muted);
+}
+.wp-input-send {
+  font-family: var(--font-mono);
+  font-size: 12px; font-weight: 700;
+  color: var(--color-red); cursor: default;
+}
+
+@media (max-width: 860px) {
+  .wp-layout { grid-template-columns: 1fr; gap: 40px; }
+}
+
 /* ── Team Facts grid ── */
 .tf-grid {
   display: grid;
