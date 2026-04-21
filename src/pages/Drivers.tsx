@@ -43,7 +43,7 @@ function DriverCircle({
           <span className="dc-team-dot" style={{ background: teamColor }} />
           {getTeamName(driver.team).replace('Scuderia ', '').replace('-AMG', '')}
         </div>
-        <div className="dc-fans">{fanCount} {fanCount === 1 ? 'fan' : 'fans'}</div>
+        <div className="dc-fans">loved by {fanCount}</div>
       </div>
       <button
         className={`dc-follow-btn${isFollowing ? ' dc-follow-btn-on' : ''}`}

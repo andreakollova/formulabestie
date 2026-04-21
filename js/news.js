@@ -38,14 +38,18 @@
     red_bull: 'Red Bull', aston_martin: 'Aston Martin', alpine: 'Alpine',
     williams: 'Williams', racing_bulls: 'Racing Bulls', haas: 'Haas',
     audi: 'Audi', cadillac: 'Cadillac', f1: 'F1',
+    // hyphen variants
+    'red-bull': 'Red Bull', 'aston-martin': 'Aston Martin', 'racing-bulls': 'Racing Bulls',
   };
   const DARK_TEXT_TEAMS = new Set(['mercedes', 'williams', 'haas']);
 
   function teamBadgeHTML(team) {
     if (!team || team === 'f1') return '';
-    const color   = TEAM_COLORS[team] || 'var(--color-muted)';
-    const name    = TEAM_NAMES[team]  || team;
-    const txtCol  = DARK_TEXT_TEAMS.has(team) ? '#000' : '#fff';
+    // Normalize: hyphens → underscores so both 'red-bull' and 'red_bull' match
+    const key = team.replace(/-/g, '_');
+    const color   = TEAM_COLORS[key] || TEAM_COLORS[team] || 'var(--color-muted)';
+    const name    = TEAM_NAMES[key]  || TEAM_NAMES[team]  || team;
+    const txtCol  = (DARK_TEXT_TEAMS.has(key) || DARK_TEXT_TEAMS.has(team)) ? '#000' : '#fff';
     return `<span class="news-team-badge" style="background:${color};color:${txtCol}">${name}</span>`;
   }
 
@@ -199,7 +203,7 @@
     }
 
     const secondary = articles.slice(1, 4).map((a, i) => fnItem(a, rewritten[i + 1], i + 2)).join('');
-    const rest      = articles.slice(4).map((a, i) => fnItem(a, rewritten[i + 4], i + 5)).join('');
+    const rest      = articles.length > 4 ? articles.slice(4).map((a, i) => fnItem(a, rewritten[i + 4], i + 5)).join('') : '';
 
     block.innerHTML = `
       <article class="fn-lead"${leadLink}>
@@ -232,7 +236,7 @@
 
   async function loadNews() {
     try {
-      const articles = await fetchArticles(10);
+      const articles = await fetchArticles(20);
       await renderNews(articles.slice(0, 3));
       await renderNewsFull(articles);
       return;

@@ -8,10 +8,11 @@ export default function Nav({ active }: NavProps) {
   return (
     <nav className="fg-nav">
       <div className="fg-nav-inner">
-        {/* Left: Logo */}
-        <Link to="/" className="fg-nav-logo">
-          Formula <em>Girlies</em>
-        </Link>
+        {/* Left: Logo / Home → pitwall dashboard */}
+        <a href="/" className="fg-nav-logo">
+          <img src="/favicon.png" alt="" width="20" height="20" className="fg-nav-icon" />
+          <span className="fg-nav-home-label">Home</span>
+        </a>
 
         {/* Center: Nav links */}
         <div className="fg-nav-links">
@@ -65,19 +66,30 @@ export default function Nav({ active }: NavProps) {
           gap: 24px;
         }
         .fg-nav-logo {
-          font-family: var(--font-display);
-          font-size: 20px;
-          font-weight: 900;
-          letter-spacing: -0.03em;
+          display: flex;
+          align-items: center;
+          gap: 8px;
           color: #0A0A0A;
           text-decoration: none;
           white-space: nowrap;
           flex-shrink: 0;
         }
-        .fg-nav-logo em {
-          font-style: italic;
-          color: #E8022D;
+        .fg-nav-icon {
+          width: 20px;
+          height: 20px;
+          object-fit: contain;
+          flex-shrink: 0;
         }
+        .fg-nav-home-label {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: #888;
+          transition: color 0.15s ease;
+        }
+        .fg-nav-logo:hover .fg-nav-home-label { color: #0A0A0A; }
         .fg-nav-links {
           display: flex;
           align-items: center;

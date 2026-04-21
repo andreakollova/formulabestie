@@ -133,19 +133,19 @@
 
     const attendBtn = currentUser
       ? `<button class="wpc-btn-attend ${isAttending ? 'wpc-attending' : ''}" id="wpcAttendBtn">
-           ${isAttending ? "I'll be there ✓" : "I'll be there"}
+           ${isAttending ? "🎟 I'll be there ✓" : "🎟 I'll be there"}
          </button>`
-      : `<a href="/watch-parties" class="wpc-btn-attend">I'll be there →</a>`
+      : `<a href="/watch-parties" class="wpc-btn-attend">🎟 I'll be there →</a>`
 
     const mainBtn = open
-      ? `<a href="/watch-party/${currentRace.slug}" class="wpc-btn-join">Join the Party →</a>`
+      ? `<a href="/watch-party/${currentRace.slug}" class="wpc-btn-join">🏁 Join the Party →</a>`
       : attendBtn
 
     const secondBtn = open
       ? (currentUser
-          ? `<button class="wpc-btn-attend ${isAttending ? 'wpc-attending' : ''}" id="wpcAttendBtn" style="font-size:8px;padding:8px 14px;">${isAttending ? "I'll be there ✓" : "I'll be there"}</button>`
+          ? `<button class="wpc-btn-attend ${isAttending ? 'wpc-attending' : ''}" id="wpcAttendBtn" style="font-size:9px;padding:9px 14px;">${isAttending ? "🎟 I'll be there ✓" : "🎟 I'll be there"}</button>`
           : '')
-      : `<a href="/watch-party/${currentRace.slug}" class="wpc-btn-more">More info →</a>`
+      : `<a href="/watch-party/${currentRace.slug}" class="wpc-btn-more">ℹ️ More info →</a>`
 
     card.innerHTML = `
       <div class="wpc-top">
@@ -260,7 +260,7 @@
     if (btn) {
       btn.disabled = false
       btn.className = `wpc-btn-attend ${isAttending ? 'wpc-attending' : ''}`
-      btn.textContent = isAttending ? "I'll be there ✓" : "I'll be there"
+      btn.textContent = isAttending ? "🎟 I'll be there ✓" : "🎟 I'll be there"
     }
   }
 

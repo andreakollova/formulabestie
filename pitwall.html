@@ -487,7 +487,7 @@
           <span class="wcp-lock-icon">🔒</span>
           <div>
             <div class="wcp-status-text">Opening Soon</div>
-            <div class="wcp-race-label">Miami Grand Prix</div>
+            <div class="wcp-race-label" id="wcpRaceLabel">Miami Grand Prix</div>
           </div>
         </div>
         <div class="wcp-header-right">
@@ -495,50 +495,55 @@
         </div>
       </div>
 
-      <!-- Messages (blurred/preview) -->
+      <!-- Messages preview (blurred) -->
       <div class="wcp-body">
+
+        <!-- Others' message (left) -->
         <div class="wcp-msg">
           <div class="wcp-avatar" style="border-color:#E8022D">Z</div>
-          <div class="wcp-msg-inner">
+          <div class="wcp-msg-bubble">
             <div class="wcp-msg-meta">
               <span class="wcp-msg-name">Zara</span>
-              <span class="wcp-msg-team" style="color:#E8022D">Ferrari</span>
+              <span class="wcp-msg-team" style="color:#E8022D">· Ferrari</span>
               <span class="wcp-msg-time">21:14</span>
             </div>
-            <div class="wcp-msg-text">Charles on P2 and closing the gap! Come on! 😭</div>
+            <div class="wcp-msg-text">Charles closing the gap!! Come on 😭</div>
           </div>
         </div>
+
+        <!-- Own message (right) -->
+        <div class="wcp-msg wcp-msg--own">
+          <div class="wcp-msg-bubble wcp-msg-bubble--own">
+            <div class="wcp-msg-meta wcp-msg-meta--own">
+              <span class="wcp-msg-time">21:14</span>
+            </div>
+            <div class="wcp-msg-text" style="color:#fff">screaming from my couch rn 🔥🔥</div>
+          </div>
+        </div>
+
+        <!-- Others' message -->
         <div class="wcp-msg">
           <div class="wcp-avatar" style="border-color:#FF8002">L</div>
-          <div class="wcp-msg-inner">
+          <div class="wcp-msg-bubble">
             <div class="wcp-msg-meta">
               <span class="wcp-msg-name">Luna</span>
-              <span class="wcp-msg-team" style="color:#FF8002">McLaren</span>
+              <span class="wcp-msg-team" style="color:#FF8002">· McLaren</span>
               <span class="wcp-msg-time">21:15</span>
             </div>
-            <div class="wcp-msg-text">Norris gap is closing 🔥🔥 this is insane</div>
+            <div class="wcp-msg-text">Norris gap is 1.2s and dropping 🔥 this race is INSANE</div>
           </div>
         </div>
-        <div class="wcp-msg">
-          <div class="wcp-avatar" style="border-color:#3671C6">M</div>
-          <div class="wcp-msg-inner">
-            <div class="wcp-msg-meta">
-              <span class="wcp-msg-name">Mia</span>
-              <span class="wcp-msg-team" style="color:#3671C6">Red Bull</span>
-              <span class="wcp-msg-time">21:15</span>
-            </div>
-            <div class="wcp-msg-text">Max so calm under pressure, always 👑</div>
-          </div>
-        </div>
+
+        <!-- Others' message -->
         <div class="wcp-msg">
           <div class="wcp-avatar" style="border-color:#25F6D2">N</div>
-          <div class="wcp-msg-inner">
+          <div class="wcp-msg-bubble">
             <div class="wcp-msg-meta">
               <span class="wcp-msg-name">Nina</span>
-              <span class="wcp-msg-team" style="color:#25F6D2">Mercedes</span>
+              <span class="wcp-msg-team" style="color:#25F6D2">· Mercedes</span>
               <span class="wcp-msg-time">21:16</span>
             </div>
-            <div class="wcp-msg-text">Russell P4! Let's go George 💚</div>
+            <div class="wcp-msg-text">Russell P4 let's gooo George 💚</div>
           </div>
         </div>
 
@@ -555,7 +560,7 @@
 
       <!-- Input (locked) -->
       <div class="wcp-input-row" onclick="window.location='/watch-parties'" style="cursor:pointer;">
-        <span class="wcp-input-placeholder">Chat opens when the party starts…</span>
+        <span class="wcp-input-placeholder">Message opens when party starts…</span>
         <span class="wcp-input-arrow">→</span>
       </div>
 
@@ -686,7 +691,7 @@
 @media (max-width: 900px) { .hero-sitenav { display: none; } }
 
 /* ── Watch Party Poster Card (new) ── */
-.wp-layout-new { grid-template-columns: 3fr 2fr; gap: 0; }
+.wp-layout-new { grid-template-columns: 3fr 2fr; gap: 0; align-items: stretch; }
 .wp-chat-preview-new { border-left: none; }
 
 /* Race poster card */
@@ -1063,41 +1068,57 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 2px;
+  padding: 12px;
 }
 
+/* Chat message rows — bubble style */
 .wcp-msg {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--color-border, #e8e8e8);
+  gap: 8px;
+  align-items: flex-end;
+  max-width: 88%;
+}
+.wcp-msg--own {
+  align-self: flex-end;
+  flex-direction: row-reverse;
 }
 .wcp-avatar {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 2px solid;
   background: #111;
   color: #fff;
   font-family: var(--font-mono, monospace);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-bottom: 2px;
 }
-.wcp-msg-inner { flex: 1; min-width: 0; }
+.wcp-msg-bubble {
+  background: var(--color-paper-2, #f4f4f4);
+  border-radius: 4px 14px 14px 14px;
+  padding: 7px 11px;
+  max-width: 100%;
+}
+.wcp-msg-bubble--own {
+  background: var(--color-ink, #111);
+  border-radius: 14px 4px 14px 14px;
+}
 .wcp-msg-meta {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-bottom: 3px;
+  gap: 5px;
+  margin-bottom: 2px;
 }
+.wcp-msg-meta--own { justify-content: flex-end; }
 .wcp-msg-name {
   font-family: var(--font-mono, monospace);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--color-ink, #111);
@@ -1106,8 +1127,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 8px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .wcp-msg-time {
   font-family: var(--font-mono, monospace);
@@ -1120,6 +1140,7 @@
   font-size: 13px;
   line-height: 1.4;
   color: var(--color-ink, #111);
+  word-break: break-word;
 }
 
 /* Blur overlay */

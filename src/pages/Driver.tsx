@@ -24,6 +24,7 @@ export default function Driver() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [myDriverIds, setMyDriverIds] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,6 +41,21 @@ export default function Driver() {
     }
     load()
   }, [driverId, user])
+
+  // Load user's chosen drivers
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('profiles')
+      .select('driver_id, driver2_id')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setMyDriverIds([data.driver_id, data.driver2_id].filter(Boolean) as string[])
+        }
+      })
+  }, [user])
 
   // Realtime Presence
   useEffect(() => {
@@ -63,21 +79,21 @@ export default function Driver() {
   // Chat: load + realtime
   useEffect(() => {
     if (!driverId) return
-    const room = `driver:${driverId}`
+    const roomKey = `driver:${driverId}`
 
     supabase
       .from('fg_chat_messages')
       .select('*, profiles(username, avatar_url, team_id)')
-      .eq('room', room)
+      .eq('room', roomKey)
       .order('created_at', { ascending: true })
       .limit(100)
       .then(({ data }) => setMessages((data ?? []) as ChatMessage[]))
 
     const channel = supabase
-      .channel(`driver-chat:${room}`)
+      .channel(`driver-chat:${roomKey}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'fg_chat_messages', filter: `room=eq.${room}` },
+        { event: 'INSERT', schema: 'public', table: 'fg_chat_messages', filter: `room=eq.${roomKey}` },
         async (payload) => {
           const { data } = await supabase
             .from('fg_chat_messages')
@@ -115,17 +131,16 @@ export default function Driver() {
   const send = async () => {
     if (!input.trim() || !driverId || !user) return
     setSending(true)
-    const room = `driver:${driverId}`
+    const roomKey = `driver:${driverId}`
     const text = input.trim()
     setInput('')
     const { data, error } = await supabase.from('fg_chat_messages').insert({
-      race_id: null,
-      room,
+      room: roomKey,
       user_id: user.id,
       text,
-      mood: null,
     }).select('*, profiles(username, avatar_url, team_id)').single()
-    if (!error && data) {
+    if (error) console.error('[vault chat send]', error)
+    if (data) {
       setMessages(prev => prev.find(m => m.id === (data as ChatMessage).id) ? prev : [...prev, data as ChatMessage])
     }
     setSending(false)
@@ -134,6 +149,8 @@ export default function Driver() {
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
+
+  const isMyDriver = user ? myDriverIds.includes(driverId ?? '') : false
 
   if (!driver) {
     return (
@@ -184,8 +201,8 @@ export default function Driver() {
             <h1 className="dp-name">{driver.name}</h1>
             <div className="dp-stats-row">
               <span className="dp-stat">
+                <span className="dp-stat-label">loved by</span>
                 <span className="dp-stat-num">{fanCount}</span>
-                <span className="dp-stat-label">{fanCount === 1 ? 'fan' : 'fans'}</span>
               </span>
               <span className="dp-stat-sep">·</span>
               <span className="dp-stat">
@@ -207,69 +224,82 @@ export default function Driver() {
         {/* Red rule */}
         <div className="dp-rule" />
 
-        {/* Fan chat section */}
+        {/* Vault section */}
         <div className="dp-chat-section">
-          <div className="fg-kicker">FAN CHAT</div>
+          <div className="fg-kicker">THE VAULT</div>
           <h2 className="dp-chat-title">
-            #{driver.number} <em>Community</em>
+            #{driver.number} <em>Vault</em>
           </h2>
 
-          <div className="dp-chat-box">
-            <div className="fg-chat-wrap dp-chat-scroll">
-              {messages.length === 0 && (
-                <div style={{ textAlign: 'center', color: 'var(--color-muted)', fontSize: 13, fontFamily: 'var(--font-mono)', padding: '40px 0', letterSpacing: '0.05em' }}>
-                  No messages yet. Start the conversation!
-                </div>
-              )}
-              {messages.map(m => (
-                <div key={m.id} className="fg-chat-msg">
-                  <div
-                    className="fg-chat-avatar"
-                    style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
-                  >
-                    {m.profiles?.avatar_url
-                      ? <img src={m.profiles.avatar_url} alt="" />
-                      : (m.profiles?.username ?? '?')[0].toUpperCase()
-                    }
-                  </div>
-                  <div className="fg-chat-body">
-                    <div className="fg-chat-meta">
-                      <span className="fg-chat-name">{m.profiles?.username ?? 'fan'}</span>
-                      <span className="fg-chat-time">
-                        {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div className="fg-chat-text">{m.text}</div>
-                  </div>
-                </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>
-
-            <div className="fg-chat-input-row">
-              <textarea
-                className="fg-chat-input"
-                placeholder={`Chat about #${driver.number}…`}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKey}
-                rows={1}
-                disabled={!user}
-              />
-              <button
-                className="fg-chat-send"
-                onClick={send}
-                disabled={sending || !input.trim() || !user}
-              >
-                Send
-              </button>
-            </div>
-            {!user && (
-              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--color-border)', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-muted)' }}>
-                <Link to="/login" style={{ color: 'var(--color-ink)', fontWeight: 700 }}>Sign in</Link> to chat
+          {!isMyDriver ? (
+            <div className="dp-vault-locked">
+              <div className="dp-vault-lock-icon">🔒</div>
+              <div className="dp-vault-lock-title">Private Vault</div>
+              <div className="dp-vault-lock-sub">
+                This vault is for {driver.name.split(' ').slice(-1)[0]}'s fans only.
+                Set {driver.name.split(' ')[0]} as your driver to enter.
               </div>
-            )}
-          </div>
+              <Link to="/me" className="dp-vault-lock-btn">Set my drivers →</Link>
+            </div>
+          ) : (
+            <div className="dp-chat-box">
+              <div className="fg-chat-wrap dp-chat-scroll">
+                {messages.length === 0 && (
+                  <div style={{ textAlign: 'center', color: 'var(--color-muted)', fontSize: 13, fontFamily: 'var(--font-mono)', padding: '40px 0', letterSpacing: '0.05em' }}>
+                    No messages yet. Start the conversation!
+                  </div>
+                )}
+                {messages.map(m => {
+                  const isOwn = user?.id === m.user_id
+                  return (
+                    <div key={m.id} className={`fg-chat-msg${isOwn ? ' fg-chat-msg--own' : ''}`}>
+                      {!isOwn && (
+                        <div
+                          className="fg-chat-avatar"
+                          style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
+                        >
+                          {m.profiles?.avatar_url
+                            ? <img src={m.profiles.avatar_url} alt="" />
+                            : (m.profiles?.username ?? '?')[0].toUpperCase()
+                          }
+                        </div>
+                      )}
+                      <div className="fg-chat-body">
+                        <div className="fg-chat-meta">
+                          <span className="fg-chat-name">{m.profiles?.username ?? 'fan'}</span>
+                          <span className="fg-chat-time">
+                            {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div className="fg-chat-bubble">
+                          <div className="fg-chat-text">{m.text}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                <div ref={bottomRef} />
+              </div>
+
+              <div className="fg-chat-input-row">
+                <textarea
+                  className="fg-chat-input"
+                  placeholder={`Chat in the #${driver.number} vault…`}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKey}
+                  rows={1}
+                />
+                <button
+                  className="fg-chat-send"
+                  onClick={send}
+                  disabled={sending || !input.trim()}
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -425,7 +455,7 @@ export default function Driver() {
           margin-bottom: 40px;
         }
 
-        /* ── Chat section ── */
+        /* ── Vault section ── */
         .dp-chat-section { max-width: 720px; }
         .dp-chat-title {
           font-family: var(--font-display);
@@ -441,14 +471,52 @@ export default function Driver() {
         }
         .dp-chat-box {
           border: 2px solid var(--color-ink);
-          border-radius: var(--radius);
           overflow: hidden;
         }
         .dp-chat-scroll {
           height: 420px;
           overflow-y: auto;
         }
-        .fg-chat-wrap { padding: 0; }
+
+        /* Vault locked state */
+        .dp-vault-locked {
+          border: 2px solid var(--color-border);
+          padding: 48px 32px;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+        .dp-vault-lock-icon { font-size: 28px; }
+        .dp-vault-lock-title {
+          font-family: var(--font-display);
+          font-size: 22px;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          color: var(--color-ink);
+        }
+        .dp-vault-lock-sub {
+          font-family: var(--font-sans);
+          font-size: 14px;
+          color: var(--color-muted);
+          line-height: 1.6;
+          max-width: 380px;
+        }
+        .dp-vault-lock-btn {
+          display: inline-block;
+          margin-top: 8px;
+          padding: 10px 20px;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          background: var(--color-ink);
+          color: #fff;
+          text-decoration: none;
+          transition: background 0.12s ease;
+        }
+        .dp-vault-lock-btn:hover { background: #333; }
 
         @media (max-width: 640px) {
           .dp-number-bg { font-size: 80px; }

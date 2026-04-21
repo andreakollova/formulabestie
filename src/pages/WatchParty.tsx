@@ -12,8 +12,8 @@ type ChatMessage = Database['public']['Tables']['fg_chat_messages']['Row'] & {
   profiles: { username: string; avatar_url: string | null; team_id: string | null } | null
 }
 
-const MOODS = ['🔥', '😱', '😭', '🎉', '💀', '👏', '😤', '💔', '🏆', '🤞']
-const QUICK_REACTIONS = ['🔥', '🎉', '😭', '💀', '👏']
+const MOODS = ['🔥', '😱', '😭', '🎉', '👏', '😤', '❤️', '💔', '🏆', '🤞']
+const QUICK_REACTIONS = ['🔥', '🎉', '😭', '❤️', '👏']
 
 type PredictionForm = {
   p1: string
@@ -571,31 +571,24 @@ export default function WatchParty() {
                   </button>
                 </div>
               )}
-              <div className="wp-chat-header">
-                <span className="wp-chat-header-label">PRE-RACE — Make Your Predictions</span>
-              </div>
-              <div className="wp-pre-race-body">
-                <div className="pred-section">
-                  <div className="pred-header">
-                    <div>
-                      <div className="pred-section-kicker">Pre-Race</div>
-                      <h3 className="pred-section-title">Your <em>Predictions</em></h3>
-                    </div>
-                    {predSaved && <div className="pred-saved-toast">Locked in ✓</div>}
-                    {existingEntry && !predSaved && (
-                      <div className="pred-existing-note">Submitted · Update anytime</div>
-                    )}
+              <div className="wp-pre-race-grid">
+                {/* Left: predictions panel */}
+                <div className="wp-pred-panel">
+                  <div className="wp-pred-panel-head">
+                    <div className="pred-section-kicker">Pre-Race</div>
+                    <h3 className="pred-section-title">Your <em>Grid</em></h3>
+                    {predSaved && <div className="pred-saved-toast">Locked ✓</div>}
+                    {existingEntry && !predSaved && <div className="pred-existing-note">Saved · Update anytime</div>}
                   </div>
 
                   <div className="pred-picks">
                     {[
-                      { key: 'p1' as const, label: 'P1', sublabel: 'Race Winner', icon: '🏆' },
-                      { key: 'p2' as const, label: 'P2', sublabel: 'Second Place', icon: '🥈' },
-                      { key: 'p3' as const, label: 'P3', sublabel: 'Third Place', icon: '🥉' },
-                      { key: 'fastest_lap' as const, label: 'FL', sublabel: 'Fastest Lap', icon: '⚡' },
-                      { key: 'dnf' as const, label: 'DNF', sublabel: 'First Out', icon: '💀' },
+                      { key: 'p1' as const, label: 'P1', sublabel: 'Winner', icon: '🏆' },
+                      { key: 'p2' as const, label: 'P2', sublabel: '2nd', icon: '🥈' },
+                      { key: 'p3' as const, label: 'P3', sublabel: '3rd', icon: '🥉' },
+                      { key: 'fastest_lap' as const, label: 'FL', sublabel: 'Fastest', icon: '⚡' },
+                      { key: 'dnf' as const, label: 'DNF', sublabel: 'First out', icon: '💔' },
                     ].map(({ key, label, sublabel, icon }) => {
-                      const allPicks = [predictions.p1, predictions.p2, predictions.p3].filter(Boolean)
                       const exclude = key === 'p1' ? [predictions.p2, predictions.p3]
                         : key === 'p2' ? [predictions.p1, predictions.p3]
                         : key === 'p3' ? [predictions.p1, predictions.p2]
@@ -605,10 +598,7 @@ export default function WatchParty() {
                         <div key={key} className="pred-pick-row">
                           <div className="pred-pick-position">
                             <span className="pred-pick-icon">{icon}</span>
-                            <div>
-                              <div className="pred-pick-label">{label}</div>
-                              <div className="pred-pick-sublabel">{sublabel}</div>
-                            </div>
+                            <div className="pred-pick-label">{label}</div>
                           </div>
                           <div className="pred-pick-select-wrap">
                             {selectedDriver && (
@@ -624,15 +614,12 @@ export default function WatchParty() {
                             <select
                               className="pred-select-new"
                               value={predictions[key]}
-                              onChange={e => {
-                                const v = e.target.value
-                                setPredictions(p => ({ ...p, [key]: v }))
-                              }}
+                              onChange={e => setPredictions(p => ({ ...p, [key]: e.target.value }))}
                               disabled={!user}
                             >
-                              <option value="">— Pick driver —</option>
+                              <option value="">— pick —</option>
                               {DRIVERS.filter(d => !exclude.filter(x => x !== predictions[key]).includes(d.id)).map(d => (
-                                <option key={d.id} value={d.id}>#{d.number} {d.name}</option>
+                                <option key={d.id} value={d.id}>#{d.number} {d.name.split(' ').slice(-1)[0]}</option>
                               ))}
                             </select>
                           </div>
@@ -646,17 +633,22 @@ export default function WatchParty() {
                     onClick={savePredictions}
                     disabled={savingPred || !user}
                   >
-                    {savingPred ? 'Saving…' : existingEntry ? 'Update Predictions' : 'Lock In Grid →'}
+                    {savingPred ? 'Saving…' : existingEntry ? 'Update' : 'Lock In →'}
                   </button>
                   {!user && (
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-muted)', marginTop: 10 }}>
-                      <Link to="/login" style={{ color: 'var(--color-ink)', fontWeight: 700 }}>Sign in</Link> to submit predictions
+                    <p className="pred-signin-note">
+                      <Link to="/login">Sign in</Link> to predict
                     </p>
                   )}
                 </div>
 
-                <div className="pred-chat-divider"><span>Fan Chat</span></div>
-                {renderChat()}
+                {/* Right: live chat */}
+                <div className="wp-pre-race-chat">
+                  <div className="wp-chat-header">
+                    <span className="wp-chat-header-label">Pre-Race Chat</span>
+                  </div>
+                  {renderChat()}
+                </div>
               </div>
             </>
           )}
@@ -1178,23 +1170,30 @@ export default function WatchParty() {
         .wp-admin-btn-close { background: #888; }
         .wp-admin-btn-close:hover { background: #555; }
 
-        /* Pre-race predictions */
-        .wp-pre-race-body {
+        /* Pre-race two-col grid */
+        .wp-pre-race-grid {
           flex: 1;
+          display: grid;
+          grid-template-columns: 260px 1fr;
+          overflow: hidden;
+        }
+        .wp-pred-panel {
+          border-right: 1px solid var(--color-border);
           overflow-y: auto;
-          padding: 0;
-        }
-        .pred-section {
-          padding: 28px 32px 0;
-          margin-bottom: 0;
-        }
-        .pred-header {
           display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 20px;
+          flex-direction: column;
+          padding: 20px 16px 16px;
+          gap: 0;
         }
+        .wp-pred-panel-head {
+          margin-bottom: 16px;
+        }
+        .wp-pre-race-chat {
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
         .pred-section-kicker {
           font-family: var(--font-mono);
           font-size: 9px;
@@ -1206,18 +1205,16 @@ export default function WatchParty() {
         }
         .pred-section-title {
           font-family: var(--font-display);
-          font-size: 26px;
+          font-size: 22px;
           font-weight: 900;
           letter-spacing: -0.03em;
           color: var(--color-ink);
-          margin: 0;
+          margin: 0 0 6px;
           line-height: 1.1;
         }
         .pred-section-title em { font-style: italic; color: var(--color-red); }
         .pred-saved-toast {
           display: inline-flex;
-          align-items: center;
-          gap: 6px;
           background: var(--color-ink);
           color: #fff;
           font-family: var(--font-mono);
@@ -1225,36 +1222,38 @@ export default function WatchParty() {
           font-weight: 700;
           letter-spacing: 0.1em;
           text-transform: uppercase;
-          padding: 6px 12px;
+          padding: 4px 10px;
           white-space: nowrap;
-          flex-shrink: 0;
         }
         .pred-existing-note {
           font-family: var(--font-mono);
           font-size: 9px;
           color: var(--color-muted);
           letter-spacing: 0.04em;
-          white-space: nowrap;
-          flex-shrink: 0;
-          padding-top: 16px;
         }
+        .pred-signin-note {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          color: var(--color-muted);
+          margin-top: 10px;
+          text-align: center;
+        }
+        .pred-signin-note a { color: var(--color-ink); font-weight: 700; }
 
         /* Pick rows */
         .pred-picks {
           display: flex;
           flex-direction: column;
-          gap: 0;
           border: 1px solid var(--color-border);
-          border-radius: var(--radius);
           overflow: hidden;
-          margin-bottom: 16px;
+          margin-bottom: 0;
         }
         .pred-pick-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
-          padding: 14px 16px;
+          gap: 8px;
+          padding: 10px 12px;
           border-bottom: 1px solid var(--color-border);
           background: var(--color-paper);
           transition: background 0.1s ease;
@@ -1264,43 +1263,35 @@ export default function WatchParty() {
         .pred-pick-position {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 7px;
           flex-shrink: 0;
-          min-width: 110px;
+          min-width: 52px;
         }
         .pred-pick-icon {
-          font-size: 18px;
+          font-size: 14px;
           line-height: 1;
           flex-shrink: 0;
         }
         .pred-pick-label {
           font-family: var(--font-mono);
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 700;
           color: var(--color-ink);
           letter-spacing: 0.04em;
-          line-height: 1.1;
-        }
-        .pred-pick-sublabel {
-          font-family: var(--font-mono);
-          font-size: 8px;
-          font-weight: 600;
-          color: var(--color-muted);
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
         }
         .pred-pick-select-wrap {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           flex: 1;
           justify-content: flex-end;
+          min-width: 0;
         }
         .pred-pick-preview {
-          width: 32px;
-          height: 32px;
+          width: 26px;
+          height: 26px;
           border-radius: 50%;
-          border: 2.5px solid;
+          border: 2px solid;
           overflow: hidden;
           background: #111;
           flex-shrink: 0;
@@ -1313,26 +1304,25 @@ export default function WatchParty() {
           justify-content: center;
           overflow: hidden;
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
           color: #fff;
         }
         .pred-pick-photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
         .pred-select-new {
-          padding: 8px 28px 8px 10px;
+          padding: 6px 22px 6px 8px;
           border: 1px solid var(--color-border);
-          border-radius: var(--radius);
           background: var(--color-paper);
           font-family: var(--font-mono);
-          font-size: 11px;
+          font-size: 10px;
           color: var(--color-ink);
           appearance: none;
           cursor: pointer;
           outline: none;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888'/%3E%3C/svg%3E");
           background-repeat: no-repeat;
-          background-position: right 8px center;
-          max-width: 200px;
+          background-position: right 6px center;
+          max-width: 130px;
           width: 100%;
         }
         .pred-select-new:focus { border-color: var(--color-ink); outline: none; }
@@ -1341,10 +1331,10 @@ export default function WatchParty() {
         .pred-lock-btn {
           display: block;
           width: 100%;
-          padding: 14px;
-          margin: 0 0 0;
+          padding: 11px;
+          margin-top: 0;
           font-family: var(--font-mono);
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.14em;
           text-transform: uppercase;
@@ -1353,30 +1343,9 @@ export default function WatchParty() {
           border: none;
           cursor: pointer;
           transition: background 0.14s ease;
-          border-radius: 0 0 var(--radius) var(--radius);
         }
         .pred-lock-btn:hover { background: #333; }
         .pred-lock-btn:disabled { opacity: 0.5; cursor: default; }
-
-        .pred-chat-divider {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: var(--color-muted);
-          margin: 12px 0 16px;
-        }
-        .pred-chat-divider::before,
-        .pred-chat-divider::after {
-          content: '';
-          flex: 1;
-          height: 1px;
-          background: var(--color-border);
-        }
 
         /* Archive */
         .wp-archive-pred {
@@ -1451,6 +1420,8 @@ export default function WatchParty() {
           .wp-upcoming-body { grid-template-columns: 1fr; }
           .wp-upcoming-left { border-right: none; border-bottom: 1px solid var(--color-border); padding: 24px 20px; }
           .wp-upcoming-right { padding: 24px 20px; }
+          .wp-pre-race-grid { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+          .wp-pred-panel { border-right: none; border-bottom: 1px solid var(--color-border); max-height: 320px; }
         }
         @media (max-width: 640px) {
           .wp-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -1504,26 +1475,33 @@ export default function WatchParty() {
                 </div>
               )
             }
+            const isOwn = user?.id === m.user_id
             return (
-              <div key={m.id} className="fg-chat-msg">
-                <div
-                  className="fg-chat-avatar"
-                  style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
-                >
-                  {m.profiles?.avatar_url
-                    ? <img src={m.profiles.avatar_url} alt="" />
-                    : (m.profiles?.username ?? '?')[0].toUpperCase()
-                  }
-                </div>
+              <div key={m.id} className={`fg-chat-msg${isOwn ? ' fg-chat-msg--own' : ''}`}>
+                {!isOwn && (
+                  <div
+                    className="fg-chat-avatar"
+                    style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
+                  >
+                    {m.profiles?.avatar_url
+                      ? <img src={m.profiles.avatar_url} alt="" />
+                      : (m.profiles?.username ?? '?')[0].toUpperCase()
+                    }
+                  </div>
+                )}
                 <div className="fg-chat-body">
                   <div className="fg-chat-meta">
                     <span className="fg-chat-name">{m.profiles?.username ?? 'fan'}</span>
                     <span className="fg-chat-time">
                       {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    {m.mood && <span style={{ fontSize: 13 }}>{m.mood}</span>}
                   </div>
-                  <div className="fg-chat-text">{m.text}</div>
+                  <div className="fg-chat-bubble">
+                    <div className="fg-chat-text">
+                      {m.mood && m.mood !== m.text && <span style={{ marginRight: 4 }}>{m.mood}</span>}
+                      {m.text}
+                    </div>
+                  </div>
                 </div>
               </div>
             )
