@@ -25,6 +25,7 @@ export default function Driver() {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [myDriverIds, setMyDriverIds] = useState<string[]>([])
+  const [myDriversLoaded, setMyDriversLoaded] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -44,7 +45,10 @@ export default function Driver() {
 
   // Load user's chosen drivers
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setMyDriversLoaded(true)
+      return
+    }
     supabase
       .from('profiles')
       .select('driver_id, driver2_id')
@@ -54,6 +58,7 @@ export default function Driver() {
         if (data) {
           setMyDriverIds([data.driver_id, data.driver2_id].filter(Boolean) as string[])
         }
+        setMyDriversLoaded(true)
       })
   }, [user])
 
@@ -150,7 +155,7 @@ export default function Driver() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  const isMyDriver = user ? myDriverIds.includes(driverId ?? '') : false
+  const isMyDriver = myDriverIds.includes(driverId ?? '')
 
   if (!driver) {
     return (
@@ -231,7 +236,9 @@ export default function Driver() {
             #{driver.number} <em>Vault</em>
           </h2>
 
-          {!isMyDriver ? (
+          {!myDriversLoaded ? (
+            <div style={{ padding: '40px 0', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-muted)' }}>Loading…</div>
+          ) : !isMyDriver ? (
             <div className="dp-vault-locked">
               <div className="dp-vault-lock-icon">🔒</div>
               <div className="dp-vault-lock-title">Private Vault</div>
