@@ -19,6 +19,11 @@ interface JournalEntry {
   mood: string | null
   journal_note: string | null
   attended: boolean
+  pred_p1: string | null
+  pred_p2: string | null
+  pred_p3: string | null
+  pred_fastest_lap: string | null
+  pred_dnf: string | null
 }
 
 export default function Me() {
@@ -58,7 +63,7 @@ export default function Me() {
     if (!user) return
     supabase
       .from('fg_race_entries')
-      .select('id, race_id, mood, journal_note, attended, fg_races(name, race_start, round)')
+      .select('id, race_id, mood, journal_note, attended, pred_p1, pred_p2, pred_p3, pred_fastest_lap, pred_dnf, fg_races(name, race_start, round)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
@@ -75,6 +80,11 @@ export default function Me() {
             mood: r['mood'] as string | null,
             journal_note: r['journal_note'] as string | null,
             attended: r['attended'] as boolean,
+            pred_p1: r['pred_p1'] as string | null,
+            pred_p2: r['pred_p2'] as string | null,
+            pred_p3: r['pred_p3'] as string | null,
+            pred_fastest_lap: r['pred_fastest_lap'] as string | null,
+            pred_dnf: r['pred_dnf'] as string | null,
           }
         })
         setJournalEntries(entries)
@@ -377,6 +387,43 @@ export default function Me() {
                       {entry.attended ? 'Watched ✓' : 'Mark watched'}
                     </button>
                   </div>
+
+                  {/* Predictions */}
+                  {(entry.pred_p1 || entry.pred_p2 || entry.pred_p3 || entry.pred_fastest_lap || entry.pred_dnf) && (
+                    <div className="me-journal-preds">
+                      <div className="me-journal-preds-label">My Predictions</div>
+                      <div className="me-journal-preds-grid">
+                        {[
+                          { key: 'pred_p1' as const,         icon: '🏆', label: 'P1' },
+                          { key: 'pred_p2' as const,         icon: '🥈', label: 'P2' },
+                          { key: 'pred_p3' as const,         icon: '🥉', label: 'P3' },
+                          { key: 'pred_fastest_lap' as const, icon: '⚡', label: 'FL' },
+                          { key: 'pred_dnf' as const,        icon: '💔', label: 'DNF' },
+                        ].map(({ key, icon, label }) => {
+                          const driverId = entry[key]
+                          if (!driverId) return null
+                          const driver = DRIVERS.find(d => d.id === driverId)
+                          if (!driver) return null
+                          const teamColor = getTeamColor(driver.team)
+                          return (
+                            <div key={key} className="me-journal-pred-item">
+                              <span className="me-journal-pred-icon">{icon}</span>
+                              <div className="me-journal-pred-driver" style={{ borderColor: teamColor }}>
+                                {driver.photo
+                                  ? <img src={driver.photo} alt="" />
+                                  : driver.name[0]
+                                }
+                              </div>
+                              <div className="me-journal-pred-info">
+                                <span className="me-journal-pred-label">{label}</span>
+                                <span className="me-journal-pred-name">{driver.name.split(' ').slice(-1)[0]}</span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="me-journal-note-area">
                     {editingNote === entry.entry_id ? (
@@ -787,6 +834,83 @@ export default function Me() {
           border-color: var(--color-ink);
         }
         .me-watched-toggle-on:hover { background: #333; border-color: #333; }
+
+        /* Predictions in journal */
+        .me-journal-preds {
+          border-top: 1px solid var(--color-border);
+          padding: 12px 18px 10px;
+        }
+        .me-journal-preds-label {
+          font-family: var(--font-mono);
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+          margin-bottom: 10px;
+        }
+        .me-journal-preds-grid {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .me-journal-pred-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: var(--color-paper-2, #f5f5f5);
+          border: 1px solid var(--color-border);
+          padding: 5px 9px 5px 6px;
+        }
+        .me-journal-pred-icon {
+          font-size: 13px;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+        .me-journal-pred-driver {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          border: 2px solid;
+          overflow: hidden;
+          background: #111;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          color: #fff;
+        }
+        .me-journal-pred-driver img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: top;
+        }
+        .me-journal-pred-info {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+        }
+        .me-journal-pred-label {
+          font-family: var(--font-mono);
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--color-red);
+          line-height: 1;
+        }
+        .me-journal-pred-name {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--color-ink);
+          letter-spacing: 0.02em;
+          line-height: 1;
+        }
 
         .me-journal-note-area {
           border-top: 1px solid var(--color-border);
