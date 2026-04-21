@@ -38,3 +38,10 @@
 .tick .val { color: #fff; font-weight: 600; }
 .tick .pts { color: rgba(255,255,255,.6); }
 .tick-dot  { color: rgba(255,255,255,.2); padding: 0 4px; font-size: 8px; }
+
+/* Time is always purple */
+.tick-time .val { color: #A78BFA; font-variant-numeric: tabular-nums; }
+.tick-time .sym { color: #7C3AED; }
+
+/* LEAD item coloured by selected team */
+.tick-lead .val { color: var(--color-red); font-weight: 700; }

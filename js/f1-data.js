@@ -214,6 +214,14 @@
   /* ── Ticker ───────────────────────────────────────────────────────────── */
   function renderTicker(drivers, constructors, nextRace, lastRace) {
     const items = [];
+
+    /* Clock — always first, always purple via .tick-time */
+    function clockVal() {
+      const n = new Date();
+      return pad2(n.getHours()) + ':' + pad2(n.getMinutes()) + ':' + pad2(n.getSeconds());
+    }
+    items.push({ sym: 'TIME', val: clockVal(), pts: '', cls: 'tick-time' });
+
     if (drivers.length)
       items.push({ sym: 'WDC',    val: drivers[0].Driver.familyName.toUpperCase(),     pts: drivers[0].points + ' pts' });
     if (constructors.length)
@@ -222,20 +230,27 @@
       items.push({ sym: 'NEXT',   val: nextRace.raceName.toUpperCase(),                pts: nextRace.date });
     if (lastRace) {
       const w = lastRace.Results[0];
-      items.push({ sym: 'WINNER', val: w.Driver.familyName.toUpperCase(),             pts: lastRace.raceName });
+      items.push({ sym: 'WINNER', val: w.Driver.familyName.toUpperCase(),              pts: lastRace.raceName });
       const fl = lastRace.Results.find(r => r.FastestLap?.rank === '1');
-      if (fl) items.push({ sym: 'FL', val: fl.Driver.familyName.toUpperCase(),        pts: fl.FastestLap.Time.time });
+      if (fl) items.push({ sym: 'FL', val: fl.Driver.familyName.toUpperCase(),         pts: fl.FastestLap.Time.time });
     }
     if (drivers.length >= 2) {
       const gap = +drivers[0].points - +drivers[1].points;
-      items.push({ sym: 'LEAD', val: '+' + gap + ' PTS', pts: drivers[0].Driver.familyName.toUpperCase() });
+      /* LEAD val coloured by user's team via .tick-lead (uses --color-red which is overridden) */
+      items.push({ sym: 'LEAD', val: drivers[0].Driver.familyName.toUpperCase(), pts: '+' + gap + ' pts ahead', cls: 'tick-lead' });
     }
 
-    const mk   = it =>
-      `<span class="tick"><span class="sym">${it.sym}</span> <span class="val">${it.val}</span> <span class="pts">${it.pts}</span></span>` +
+    const mk = it =>
+      `<span class="tick ${it.cls || ''}"><span class="sym">${it.sym}</span> <span class="val">${it.val}</span>${it.pts ? ` <span class="pts">${it.pts}</span>` : ''}</span>` +
       `<span class="tick tick-dot">\u25C6</span>`;
     const html = items.map(mk).join('');
-    document.getElementById('tkTrack').innerHTML = html + html;
+    const track = document.getElementById('tkTrack');
+    track.innerHTML = html + html;
+
+    /* Update clock every second without re-rendering everything */
+    setInterval(() => {
+      track.querySelectorAll('.tick-time .val').forEach(el => { el.textContent = clockVal(); });
+    }, 1000);
   }
 
   /* ── Update next race block ───────────────────────────────────────────── */
