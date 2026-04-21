@@ -260,6 +260,19 @@ team      — The PRIMARY team this article is about. Use EXACTLY one of these s
             Use "f1" only if the article is genuinely about multiple teams or the
             sport in general with no single primary team.
 
+            Driver → team reference (2026 season):
+            mercedes:      Antonelli, Russell
+            ferrari:       Leclerc, Hamilton
+            mclaren:       Norris, Piastri
+            red_bull:      Verstappen, Hadjar
+            aston_martin:  Alonso, Stroll
+            alpine:        Gasly, Doohan
+            williams:      Sainz, Albon
+            racing_bulls:  Lawson, Tsunoda
+            haas:          Bearman, Ocon
+            audi:          Hulkenberg, Bortoleto
+            cadillac:      Magnussen, De Vries
+
 Respond ONLY with valid JSON, no markdown:
 {"tag": "...", "headline": "...", "summary": "...", "team": "..."}\
 """
