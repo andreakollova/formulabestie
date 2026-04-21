@@ -1,0 +1,193 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   game.css — Full editorial news section + Game section
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Full News Section header ── */
+.full-news-head {
+  margin-bottom: 28px;
+}
+.full-news-kicker {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  color: var(--color-red);
+  margin-bottom: 8px;
+}
+.full-news-title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.full-news-title em { font-style: italic; color: var(--color-red); }
+.full-news-rule { height: 3px; background: var(--color-red); }
+
+/* ── Full news layout: lead + 3-col secondary + 3-col rest ── */
+.full-news-grid {
+  border: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* Lead story — full width, big */
+.fn-lead {
+  padding: 32px 36px;
+  border-bottom: 2px solid var(--color-ink);
+  position: relative;
+  transition: background var(--dur-fast) var(--ease), padding-left var(--dur-fast) var(--ease);
+  cursor: pointer;
+}
+.fn-lead::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0;
+  background: var(--color-red);
+  transition: width var(--dur-fast) var(--ease);
+}
+.fn-lead:hover { background: var(--color-border); padding-left: 42px; }
+.fn-lead:hover::before { width: 3px; }
+.fn-lead .news-headline {
+  font-size: clamp(18px, 2.2vw, 26px);
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 10px;
+}
+.fn-lead .news-body { max-width: 800px; font-size: var(--text-sm); }
+.fn-lead .news-skeleton-head { height: 24px; width: 75%; margin: 0 0 12px; }
+.fn-lead .news-skeleton-body { height: 14px; width: 90%; margin: 0; }
+
+/* 3-col row of secondary articles */
+.fn-secondary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-bottom: var(--border);
+}
+.fn-secondary .fn-item { border-right: var(--border); }
+.fn-secondary .fn-item:last-child { border-right: none; }
+
+/* 3-col row of remaining articles */
+.fn-rest {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.fn-rest .fn-item { border-right: var(--border); border-top: var(--border); }
+.fn-rest .fn-item:nth-child(3n) { border-right: none; }
+.fn-rest .fn-item:nth-child(-n+3) { border-top: none; }
+
+/* Individual item inside fn-secondary / fn-rest */
+.fn-item {
+  padding: 20px 22px;
+  position: relative;
+  transition: background var(--dur-fast) var(--ease), padding-left var(--dur-fast) var(--ease);
+  cursor: pointer;
+}
+.fn-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0;
+  background: var(--color-red);
+  transition: width var(--dur-fast) var(--ease);
+}
+.fn-item:hover { background: var(--color-border); padding-left: 28px; }
+.fn-item:hover::before { width: 3px; }
+.fn-item .news-skeleton-head { height: 14px; width: 85%; margin: 0 0 8px; }
+.fn-item .news-skeleton-body { height: 11px; width: 95%; margin: 0; }
+
+/* Reuse news-meta / headline / body / byline inside fn-lead and fn-item */
+.fn-lead .news-meta,
+.fn-item .news-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.fn-item .news-headline {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-ink);
+  letter-spacing: var(--ls-snug);
+  margin-bottom: 6px;
+}
+.fn-item .news-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fn-item .news-byline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: var(--border);
+}
+
+@media (max-width: 860px) {
+  .fn-secondary,
+  .fn-rest { grid-template-columns: 1fr 1fr; }
+  .fn-rest .fn-item:nth-child(3n) { border-right: var(--border); }
+  .fn-rest .fn-item:nth-child(2n) { border-right: none; }
+}
+@media (max-width: 560px) {
+  .fn-secondary,
+  .fn-rest { grid-template-columns: 1fr; }
+  .fn-secondary .fn-item,
+  .fn-rest .fn-item { border-right: none; border-top: var(--border); }
+}
+
+/* ── Game section ── */
+.game-section-head { margin-bottom: 28px; }
+.game-section-kicker {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  color: var(--color-red);
+  margin-bottom: 8px;
+}
+.game-section-title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.game-section-title em { font-style: italic; color: var(--color-red); }
+.game-section-rule { height: 3px; background: var(--color-red); }
+
+.game-frame-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: var(--border-2ink);
+  background: #0A0A0A;
+  aspect-ratio: 16 / 9;
+  min-height: 480px;
+}
+.game-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  position: absolute;
+  inset: 0;
+}

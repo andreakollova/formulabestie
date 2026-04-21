@@ -1,0 +1,145 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   calendar.css — Season calendar horizontal strip
+   ───────────────────────────────────────────────────────────────────────── */
+
+.cal-section { }
+
+.cal-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.cal-title {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 500;
+  letter-spacing: var(--ls-snug);
+  color: var(--color-ink);
+}
+.cal-title em { font-style: italic; color: var(--color-red); font-weight: 700; }
+.cal-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: var(--ls-wider);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Strip wrapper ── */
+.cal-strip-wrap {
+  overflow: hidden;
+  border: var(--border-2ink);
+  background: var(--color-border);
+  position: relative;
+}
+.cal-progress-track {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: rgba(0,0,0,.06);
+  z-index: 3;
+}
+.cal-progress-fill {
+  height: 100%;
+  background: var(--color-red);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: barGrow 1.4s cubic-bezier(.3,.9,.3,1) both 2.8s;
+}
+
+/* ── Strip grid ── */
+.cal-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(128px, 1fr);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink) transparent;
+}
+.cal-strip::-webkit-scrollbar { height: 3px; }
+.cal-strip::-webkit-scrollbar-thumb { background: var(--color-ink); }
+
+/* ── Round card ── */
+.cal-round {
+  padding: 18px 16px 16px;
+  border-right: var(--border);
+  background: var(--color-paper);
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  transition: background var(--dur-fast) var(--ease);
+}
+.cal-round:hover { background: var(--color-paper-3); }
+.cal-round:last-child { border-right: none; }
+.cal-round.done { background: var(--color-border); }
+.cal-round.done .cal-flag-name { color: var(--color-muted); }
+.cal-round.next { background: var(--color-ink); color: #fff; }
+.cal-round.next .cal-rnum  { color: var(--color-red); font-weight: 700; }
+.cal-round.next .cal-country { color: rgba(255,255,255,.5); }
+.cal-round.next .cal-flag-name { color: #fff; }
+.cal-round.next .cal-date  { color: rgba(255,255,255,.7); }
+
+/* Round number */
+.cal-rnum {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  color: var(--color-muted);
+  margin-bottom: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cal-status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--color-border);
+  display: inline-block;
+  flex-shrink: 0;
+}
+.cal-round:not(.done):not(.next) .cal-status-dot { display: none; }
+.cal-round.done .cal-status-dot { background: var(--color-muted); }
+.cal-round.next .cal-status-dot { background: var(--color-red); animation: pulseDot 1.6s var(--ease) infinite; }
+
+.cal-flag-emoji { font-size: 22px; line-height: 1; margin-bottom: 7px; }
+
+.cal-country {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-muted);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+.cal-flag-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-ink);
+  letter-spacing: var(--ls-snug);
+  line-height: 1.1;
+  margin-bottom: auto;
+}
+.cal-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-ink);
+  letter-spacing: .04em;
+  margin-top: 12px;
+  font-weight: 500;
+}
+.cal-winner {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+  margin-top: 5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cal-winner::before { content: '▲'; font-size: 7px; color: var(--color-red); }

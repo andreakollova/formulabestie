@@ -1,0 +1,172 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   race.css — Race hero block + countdown timer
+   ───────────────────────────────────────────────────────────────────────── */
+
+.race-hero {
+  animation: fadeUp var(--dur-slow) var(--ease) both 2s;
+  padding-top: var(--space-md);
+}
+
+.race-block {
+  background: var(--color-ink);
+  color: #fff;
+  padding: 64px;
+  border-top: 4px solid var(--color-red);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle diagonal texture — 1.5% opacity per brand guide */
+.race-block::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255,255,255,.015) 0 1px,
+    transparent 1px 12px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+.race-block > * { position: relative; z-index: 1; }
+
+.race-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 64px;
+}
+
+/* ── Round badge ── */
+.race-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.race-round {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--color-red);
+  padding: 6px 12px;
+  border: 1px solid rgba(232,2,45,.4);
+  border-radius: var(--radius);
+}
+.race-flag-big { font-size: 26px; }
+
+/* ── Race name ── */
+.race-name {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 5.5vw, var(--text-hero-md));
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  color: #fff;
+  margin-bottom: 16px;
+}
+/* "Grand Prix" in italic red, city name in white */
+.race-name em { font-style: italic; color: var(--color-red); font-weight: 400; }
+
+.race-circuit {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: rgba(255,255,255,.6);
+  margin-bottom: 5px;
+}
+.race-circuit strong { color: #fff; font-weight: 500; }
+
+/* ── Stat strip ── */
+.race-stats {
+  display: flex;
+  gap: 32px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.race-stat { display: flex; flex-direction: column; }
+.race-stat-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+  margin-bottom: 6px;
+}
+.race-stat-val {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: #fff;
+}
+
+/* ── Countdown ── */
+.race-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.countdown-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .26em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.5);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.countdown-label::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--color-red);
+  border-radius: 50%;
+  animation: pulseDot 1.8s var(--ease) infinite;
+}
+
+.countdown {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.cd-cell {
+  background: rgba(255,255,255,.05);
+  padding: 20px 8px 14px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius);
+}
+/* Guide says: sans-serif bold 64px for countdown numbers (not mono) */
+.cd-num {
+  font-family: var(--font-sans);
+  font-size: clamp(32px, 4vw, 64px);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.cd-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+  margin-top: 10px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 980px) {
+  .race-block { padding: 32px 24px 36px; }
+  .race-grid  { grid-template-columns: 1fr; gap: 32px; }
+  .race-name  { font-size: clamp(32px, 8vw, 52px); }
+}
+@media (max-width: 540px) {
+  .cd-num    { font-size: 28px; }
+  .countdown { gap: 4px; }
+  .cd-cell   { padding: 14px 5px 11px; }
+}

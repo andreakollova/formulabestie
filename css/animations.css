@@ -1,0 +1,87 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   animations.css — Keyframes and transitions
+   All motion is quiet, premium. No bounce, no spring.
+   Easing: cubic-bezier(0.4, 0, 0.2, 1) throughout.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Clip-path reveal for hero title lines */
+@keyframes revealUp {
+  0%   { clip-path: inset(100% 0 0 0); transform: translateY(10px); }
+  100% { clip-path: inset(0 0 0 0);    transform: translateY(0); }
+}
+
+/* Underline draw left-to-right (link hover) */
+@keyframes drawLine {
+  from { transform: scaleX(0); transform-origin: left; }
+  to   { transform: scaleX(1); transform-origin: left; }
+}
+
+/* Ticker horizontal scroll */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* LIVE dot pulse — 0.4 → 1.0 → 0.4 over 2s */
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1.0; }
+}
+
+/* Progress bar / standings bar grow */
+@keyframes barGrow {
+  from { transform: scaleX(0); transform-origin: left; }
+  to   { transform: scaleX(1); transform-origin: left; }
+}
+
+/* Row slide in from left */
+@keyframes rowSlide {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to   { background-position:  400px 0; }
+}
+
+/* Scroll reveal — elements animate in as they enter viewport */
+@keyframes scrollReveal {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Subtle countdown digit update */
+@keyframes countFlip {
+  0%   { opacity: 1; transform: translateY(0); }
+  40%  { opacity: 0; transform: translateY(-6px); }
+  60%  { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Scroll reveal utility ──────────────────────────────────────────────
+   Elements with [data-reveal] are hidden until IntersectionObserver
+   adds the .revealed class.
+   ──────────────────────────────────────────────────────────────────────── */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity   var(--dur-slow) var(--ease),
+    transform var(--dur-slow) var(--ease);
+}
+[data-reveal].revealed {
+  opacity: 1;
+  transform: translateY(0);
+}

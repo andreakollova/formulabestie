@@ -1,0 +1,9 @@
+scraper/venv/
+scraper/.env
+scraper/seen_articles.json
+news.json
+.idea/
+__pycache__/
+*.pyc
+.DS_Store
+**/.DS_Store

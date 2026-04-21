@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 510" fill="none">
+  <!-- F1 Car — top-down technical line art -->
+  <!-- Rear wing -->
+  <rect x="14" y="18" width="192" height="22" rx="1" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Rear wing endplates -->
+  <rect x="14" y="14" width="6" height="30" rx="1" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <rect x="200" y="14" width="6" height="30" rx="1" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Rear wing flap line -->
+  <line x1="14" y1="28" x2="206" y2="28" stroke="#0A0A0A" stroke-width="0.8"/>
+
+  <!-- DRS actuator detail -->
+  <line x1="110" y1="18" x2="110" y2="40" stroke="#0A0A0A" stroke-width="0.8"/>
+
+  <!-- Rear wheels -->
+  <ellipse cx="38" cy="82" rx="22" ry="28" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <ellipse cx="182" cy="82" rx="22" ry="28" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Rear wheel inner rim -->
+  <ellipse cx="38" cy="82" rx="13" ry="17" fill="white" stroke="#0A0A0A" stroke-width="0.7"/>
+  <ellipse cx="182" cy="82" rx="13" ry="17" fill="white" stroke="#0A0A0A" stroke-width="0.7"/>
+
+  <!-- Main body outline — smooth curves, tapers from rear to nose -->
+  <path d="
+    M 60 44
+    C 58 50 50 58 46 90
+    C 44 115 44 170 44 200
+    C 46 228 50 255 56 285
+    C 62 315 68 345 76 375
+    C 82 400 88 428 96 452
+    C 101 460 106 466 110 468
+    C 114 466 119 460 124 452
+    C 132 428 138 400 144 375
+    C 152 345 158 315 164 285
+    C 170 255 174 228 176 200
+    C 176 170 176 115 174 90
+    C 170 58 162 50 160 44
+    Z
+  " fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+
+  <!-- Rear body connection to wing -->
+  <line x1="60" y1="44" x2="20" y2="40" stroke="#0A0A0A" stroke-width="1.0"/>
+  <line x1="160" y1="44" x2="200" y2="40" stroke="#0A0A0A" stroke-width="1.0"/>
+
+  <!-- Sidepods — left -->
+  <path d="M 44 90 L 28 100 L 22 160 L 28 210 L 44 220 L 44 200 Z" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Sidepods — right -->
+  <path d="M 176 90 L 192 100 L 198 160 L 192 210 L 176 220 L 176 200 Z" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+
+  <!-- Sidepod cooling inlet detail -->
+  <path d="M 34 106 L 28 110 L 28 150 L 34 154" fill="none" stroke="#0A0A0A" stroke-width="0.7"/>
+  <path d="M 186 106 L 192 110 L 192 150 L 186 154" fill="none" stroke="#0A0A0A" stroke-width="0.7"/>
+
+  <!-- Cockpit opening (oval) -->
+  <ellipse cx="110" cy="175" rx="26" ry="38" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Cockpit inner seat detail -->
+  <ellipse cx="110" cy="182" rx="16" ry="22" fill="none" stroke="#0A0A0A" stroke-width="0.6"/>
+
+  <!-- Halo arch — red accent -->
+  <path d="M 84 148 Q 110 136 136 148" fill="none" stroke="#E8022D" stroke-width="2"/>
+  <!-- Halo cross-bar — red accent -->
+  <line x1="108" y1="137" x2="112" y2="148" stroke="#E8022D" stroke-width="2"/>
+  <!-- Halo side struts -->
+  <line x1="84" y1="148" x2="88" y2="165" stroke="#0A0A0A" stroke-width="1.0"/>
+  <line x1="136" y1="148" x2="132" y2="165" stroke="#0A0A0A" stroke-width="1.0"/>
+  <!-- Cockpit rim accent — red -->
+  <path d="M 86 165 Q 110 156 134 165" fill="none" stroke="#E8022D" stroke-width="1.4"/>
+
+  <!-- Chassis center line (dashed) -->
+  <line x1="110" y1="225" x2="110" y2="390" stroke="#0A0A0A" stroke-width="0.6" stroke-dasharray="4 4"/>
+
+  <!-- Rear diffuser area -->
+  <path d="M 80 400 L 72 420 L 110 428 L 148 420 L 140 400 Z" fill="white" stroke="#0A0A0A" stroke-width="1.0"/>
+
+  <!-- Front body / nose taper -->
+  <path d="M 96 452 L 86 470 L 110 482 L 134 470 L 124 452" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Nose tip -->
+  <path d="M 86 470 Q 110 492 134 470 L 110 488 Z" fill="white" stroke="#0A0A0A" stroke-width="1.0"/>
+
+  <!-- Front wheels -->
+  <ellipse cx="56" cy="420" rx="20" ry="26" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <ellipse cx="164" cy="420" rx="20" ry="26" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Front wheel inner rim -->
+  <ellipse cx="56" cy="420" rx="11" ry="15" fill="white" stroke="#0A0A0A" stroke-width="0.7"/>
+  <ellipse cx="164" cy="420" rx="11" ry="15" fill="white" stroke="#0A0A0A" stroke-width="0.7"/>
+
+  <!-- Front suspension pull-rod detail -->
+  <line x1="76" y1="400" x2="56" y2="408" stroke="#0A0A0A" stroke-width="0.8"/>
+  <line x1="144" y1="400" x2="164" y2="408" stroke="#0A0A0A" stroke-width="0.8"/>
+
+  <!-- Front wing -->
+  <rect x="16" y="486" width="188" height="16" rx="1" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Front wing endplates -->
+  <rect x="16" y="482" width="5" height="24" rx="1" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <rect x="199" y="482" width="5" height="24" rx="1" fill="white" stroke="#0A0A0A" stroke-width="1.2"/>
+  <!-- Front wing flap lines -->
+  <line x1="16" y1="494" x2="204" y2="494" stroke="#0A0A0A" stroke-width="0.6"/>
+  <line x1="16" y1="499" x2="204" y2="499" stroke="#0A0A0A" stroke-width="0.6"/>
+  <!-- Front wing nose mount -->
+  <line x1="110" y1="486" x2="110" y2="488" stroke="#0A0A0A" stroke-width="1.0"/>
+</svg>

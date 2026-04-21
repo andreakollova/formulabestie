@@ -1,0 +1,66 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   accents.css — Graphic design language: grid, red squares, mark dots
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Grid overlay — barely visible, just a hint */
+body {
+  background-image:
+    linear-gradient(rgba(10,10,10,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10,10,10,.018) 1px, transparent 1px);
+  background-size: 130px 130px;
+}
+
+/* Fixed decorative red squares */
+.deco-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 900;
+  overflow: hidden;
+}
+/* Only 3 placed accents — large top-right, small mid-right, small bottom-left */
+.deco-sq { position: absolute; background: var(--color-red); }
+.deco-sq-lg { width: 80px; height: 64px; }
+.deco-sq-sm { width: 18px; height: 18px; }
+.pos-tr { top: 52px; right: 0; }
+.pos-mr { top: 48%; right: 130px; }
+.pos-bl { bottom: 130px; left: 0; }
+
+/* Black structural dots */
+.deco-mark { position: absolute; width: 5px; height: 5px; background: var(--color-ink); }
+.pm-a { top: 260px; right: 260px; }
+.pm-b { top: 520px; left: 130px; }
+.pm-c { top: 780px; right: 130px; }
+.pm-d { bottom: 260px; left: 260px; }
+
+/* Dot grid corner accent (inline use) */
+.deco-dot-grid {
+  width: 78px; height: 52px;
+  background-image: radial-gradient(circle, rgba(10,10,10,.22) 1.2px, transparent 1.2px);
+  background-size: 13px 13px;
+  flex-shrink: 0;
+}
+
+/* Pull-quote */
+.pull-quote { border-left: 3px solid var(--color-red); padding: 10px 0 10px 18px; margin: 20px 0; }
+.pull-quote-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--color-muted); margin-bottom: 8px; }
+.pull-quote-text { font-family: var(--font-display); font-style: italic; font-size: clamp(18px, 2vw, 24px); font-weight: 600; line-height: 1.25; color: var(--color-ink); letter-spacing: var(--ls-snug); }
+
+/* Team color square (inline) */
+.team-sq { display: inline-block; width: 8px; height: 8px; vertical-align: middle; flex-shrink: 0; }
+
+/* Red square inline accent */
+.sq-red { display: inline-block; width: 8px; height: 8px; background: var(--color-red); vertical-align: middle; flex-shrink: 0; }
+.sq-ink { display: inline-block; width: 5px; height: 5px; background: var(--color-ink); vertical-align: middle; flex-shrink: 0; }
+
+/* Legacy aliases (used in existing HTML) */
+.sq-mark { display: inline-block; width: 8px; height: 8px; background: var(--color-red); vertical-align: middle; flex-shrink: 0; }
+.sq-mark-ink { display: inline-block; width: 5px; height: 5px; background: var(--color-ink); vertical-align: middle; flex-shrink: 0; }
+
+/* Accent rule */
+.accent-rule { border-left: 3px solid var(--color-red); padding-left: 16px; }
+
+@media (max-width: 639px) {
+  .deco-sq-lg { width: 48px; height: 40px; }
+  .pos-mr { display: none; }
+}

@@ -1,0 +1,40 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   ticker.css — Top strip ticker
+   Black bar, 40px, sticky, F1 metadata scrolling
+   ───────────────────────────────────────────────────────────────────────── */
+
+.ticker-wrap {
+  background: var(--color-ink);
+  height: 40px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid var(--color-red);
+  position: static;
+  animation: fadeIn .6s var(--ease) both;
+}
+
+.ticker-track {
+  display: flex;
+  white-space: nowrap;
+  animation: ticker 52s linear infinite;
+  will-change: transform;
+}
+.ticker-track:hover { animation-play-state: paused; }
+
+.tick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,.5);
+  text-transform: uppercase;
+}
+.tick .sym { color: var(--color-red); font-weight: 700; letter-spacing: .16em; }
+.tick .val { color: #fff; font-weight: 600; }
+.tick .pts { color: rgba(255,255,255,.6); }
+.tick-dot  { color: rgba(255,255,255,.2); padding: 0 4px; font-size: 8px; }

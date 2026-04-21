@@ -1,0 +1,125 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   tokens.css — Design Tokens · Pit Wall Brand Guide v2
+   Single source of truth for all design values.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Colour Palette ──────────────────────────────────────────────────── */
+  --color-paper:      #FFFFFF;   /* Main background */
+  --color-white:      #FFFFFF;   /* Cards, contrast sections */
+  --color-ink:        #0A0A0A;   /* All text, lines */
+  --color-muted:      #888888;   /* Secondary text, metadata */
+  --color-border:     #E0E0E0;   /* Dividers, borders */
+  --color-red:        #E8022D;   /* Signature red — one per page */
+  --color-red-dark:   #C80125;   /* Red hover state */
+
+  /* Paper tints */
+  --color-paper-2:    #F5F5F5;
+  --color-paper-3:    #EBEBEB;
+
+  /* ── Team Colours ────────────────────────────────────────────────────── */
+  --team-ferrari:     #E8022D;
+  --team-mercedes:    #25F6D2;
+  --team-mclaren:     #FF8002;
+  --team-red-bull:    #3671C6;
+  --team-aston:       #239971;
+  --team-alpine:      #0493CC;
+  --team-williams:    #65C4FF;
+  --team-rb:          #6792FF;
+  --team-haas:        #B6BABD;
+  --team-audi:        #02877C;
+  --team-cadillac:    #8A9099;
+
+  /* ── Typography — Families ───────────────────────────────────────────── */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'JetBrains Mono', Menlo, Monaco, monospace;
+
+  /* ── Typography — Scale ──────────────────────────────────────────────── */
+  --text-hero-xl:  120px;
+  --text-hero-lg:   96px;
+  --text-hero-md:   72px;
+  --text-h1:        56px;
+  --text-h2:        40px;
+  --text-h3:        28px;
+  --text-h4:        20px;
+  --text-lg:        18px;
+  --text-base:      16px;
+  --text-sm:        14px;
+  --text-caption:   12px;
+  --text-data:      14px;
+  --text-data-lg:   16px;
+
+  /* ── Line Heights ─────────────────────────────────────────────────────── */
+  --lh-hero:    0.95;
+  --lh-heading: 1.1;
+  --lh-body:    1.6;
+  --lh-data:    1.3;
+
+  /* ── Letter Spacing ──────────────────────────────────────────────────── */
+  --ls-tight:   -0.03em;
+  --ls-snug:    -0.015em;
+  --ls-normal:   0;
+  --ls-wide:     0.05em;
+  --ls-wider:    0.08em;
+  --ls-widest:   0.12em;
+
+  /* ── Spacing ─────────────────────────────────────────────────────────── */
+  --space-xs:    4px;
+  --space-sm:    8px;
+  --space-md:   16px;
+  --space-lg:   24px;
+  --space-xl:   40px;
+  --space-2xl:  64px;
+  --space-3xl:  96px;
+  --space-4xl: 240px;
+
+  /* ── Layout ──────────────────────────────────────────────────────────── */
+  --max-width:        1440px;
+  --content-width:     680px;
+  --page-margin:        48px;
+  --page-margin-tablet: 32px;
+  --page-margin-mobile: 20px;
+  --gutter:             24px;
+
+  /* ── Borders ─────────────────────────────────────────────────────────── */
+  --radius:      2px;
+  --border:      1px solid var(--color-border);
+  --border-ink:  1px solid var(--color-ink);
+  --border-2ink: 2px solid var(--color-ink);
+  --border-red:  1px solid var(--color-red);
+
+  /* ── Shadows ─────────────────────────────────────────────────────────── */
+  --shadow-float: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  /* ── Animation ───────────────────────────────────────────────────────── */
+  --ease:          cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:      cubic-bezier(0, 0, 0.2, 1);
+  --dur-fast:      200ms;
+  --dur-base:      300ms;
+  --dur-slow:      600ms;
+  --dur-page:      600ms;
+}
+
+/* ── Responsive token overrides ───────────────────────────────────────── */
+@media (max-width: 1023px) {
+  :root {
+    --page-margin:  var(--page-margin-tablet);
+    --text-hero-xl: 72px;
+    --text-hero-lg: 56px;
+    --text-hero-md: 48px;
+    --space-3xl:    72px;
+    --space-2xl:    48px;
+  }
+}
+
+@media (max-width: 639px) {
+  :root {
+    --page-margin:  var(--page-margin-mobile);
+    --text-hero-xl: 56px;
+    --text-hero-lg: 44px;
+    --text-hero-md: 36px;
+    --space-2xl:    40px;
+    --space-3xl:    64px;
+  }
+}

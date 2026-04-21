@@ -1,0 +1,293 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   hero.css — Hero section: flag eyebrow, big title, red rule, live badge
+   ───────────────────────────────────────────────────────────────────────── */
+
+.hero {
+  padding-top: var(--space-lg);
+  padding-bottom: 0;
+  position: relative;
+}
+
+/* ── Top bar: flag + eyebrow + greeting ── */
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-xl);
+  animation: fadeUp var(--dur-slow) var(--ease) both .1s;
+}
+
+.brand-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.hero-flag {
+  width: 30px;
+  height: auto;
+  display: block;
+  image-rendering: crisp-edges;
+}
+
+.brand-right {
+  text-align: right;
+  animation: fadeUp var(--dur-slow) var(--ease) both .3s;
+}
+.greeting {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+}
+.dateline {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Title ── */
+.title-wrap {
+  margin-bottom: 0;
+  animation: fadeUp var(--dur-slow) var(--ease) both .5s;
+}
+.hero-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--color-ink);
+  font-variation-settings: 'opsz' 144;
+  margin-bottom: 0;
+}
+.hero-title .line1 {
+  display: block;
+  font-size: clamp(56px, 10vw, 130px);
+  line-height: 0.92;
+  overflow: hidden;
+  padding-bottom: .04em;
+}
+.hero-title .line1 span {
+  display: inline-block;
+  animation: revealUp 1s cubic-bezier(.2,.9,.25,1) both .7s;
+}
+.hero-title .line2 {
+  display: block;
+  font-size: clamp(56px, 10vw, 130px);
+  line-height: 0.92;
+  font-style: italic;
+  color: var(--color-red);
+  overflow: hidden;
+  padding-bottom: .04em;
+}
+.hero-title .line2 span {
+  display: inline-block;
+  animation: revealUp 1s cubic-bezier(.2,.9,.25,1) both 1.1s;
+}
+
+/* ── Red + ink separator lines ── */
+.title-rule-red {
+  height: 3px;
+  background: var(--color-red);
+  margin-top: 20px;
+  animation: fadeIn 1s var(--ease) both 1.6s;
+}
+.title-rule-ink {
+  height: 1px;
+  background: var(--color-ink);
+  margin-top: 4px;
+  margin-bottom: 0;
+  animation: fadeIn 1s var(--ease) both 1.7s;
+}
+
+/* ── Sub row: live badge + nav ── */
+.hero-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 0 var(--space-xl);
+  animation: fadeUp var(--dur-slow) var(--ease) both 1.8s;
+}
+.hero-nav {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── LIVE badge ── */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 13px;
+  background: var(--color-red);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  border-radius: var(--radius);
+}
+.live-badge::before {
+  content: '';
+  display: inline-block;
+  width: 7px; height: 7px;
+  background: #fff;
+  border-radius: 50%;
+  animation: pulseDot 2s var(--ease) infinite;
+}
+
+/* ── Greeting button ── */
+.greeting-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: right;
+}
+.greeting-btn .greeting {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--color-muted);
+  margin-bottom: 0;
+}
+.greeting-btn:hover .greeting { color: var(--color-ink); }
+.greeting-arrow {
+  font-size: 11px;
+  color: var(--color-red);
+  display: inline-block;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.greeting-btn[aria-expanded="true"] .greeting-arrow { transform: rotate(180deg); }
+
+/* ── Profile panel ── */
+.profile-panel {
+  background: var(--color-paper);
+  border: var(--border-2ink);
+  border-radius: var(--radius);
+  position: absolute;
+  right: var(--page-margin);
+  top: 110px;
+  width: 320px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,.08);
+  animation: fadeUp var(--dur-fast) var(--ease) both;
+}
+.profile-panel-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px;
+}
+.profile-field { display: flex; flex-direction: column; gap: 6px; }
+.profile-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.profile-input {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-red);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  font-style: italic;
+  padding: 8px 10px;
+  outline: none;
+  border-radius: var(--radius);
+  caret-color: var(--color-red);
+  box-sizing: border-box;
+}
+.profile-team-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.profile-team-picker .team-swatch {
+  flex-direction: row;
+  gap: 5px;
+  padding: 4px 8px;
+  min-width: unset;
+  flex: none;
+}
+.profile-team-picker .team-swatch-dot { width: 10px; height: 10px; }
+.profile-team-picker .team-swatch-name { font-size: 8px; }
+.profile-save-btn {
+  width: 100%;
+  padding: 10px;
+  background: var(--color-red);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.profile-save-btn:hover { background: var(--color-red-dark); }
+
+/* ── Team picker row (below hero-sub) ── */
+.hero-team-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: var(--space-xl);
+  flex-wrap: wrap;
+}
+.hero-team-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.hero-team-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* Compact dots in hero (no label, just colored dots) */
+.hero-team-picker .team-swatch {
+  flex-direction: row;
+  gap: 6px;
+  padding: 5px 10px;
+  min-width: unset;
+  flex: none;
+}
+.hero-team-picker .team-swatch-dot {
+  width: 10px;
+  height: 10px;
+}
+.hero-team-picker .team-swatch-name {
+  font-size: 9px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 980px) {
+  .hero-top { flex-direction: column; gap: 14px; }
+  .brand-right { text-align: left; }
+  .hero-sub { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
