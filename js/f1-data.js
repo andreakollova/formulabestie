@@ -215,12 +215,6 @@
   function renderTicker(drivers, constructors, nextRace, lastRace) {
     const items = [];
 
-    /* Clock — always first, always purple via .tick-time */
-    function clockVal() {
-      const n = new Date();
-      return pad2(n.getHours()) + ':' + pad2(n.getMinutes()) + ':' + pad2(n.getSeconds());
-    }
-    items.push({ sym: 'TIME', val: clockVal(), pts: '', cls: 'tick-time' });
 
     if (drivers.length)
       items.push({ sym: 'WDC',    val: drivers[0].Driver.familyName.toUpperCase(),     pts: drivers[0].points + ' pts' });
@@ -246,11 +240,6 @@
     const html = items.map(mk).join('');
     const track = document.getElementById('tkTrack');
     track.innerHTML = html + html;
-
-    /* Update clock every second without re-rendering everything */
-    setInterval(() => {
-      track.querySelectorAll('.tick-time .val').forEach(el => { el.textContent = clockVal(); });
-    }, 1000);
   }
 
   /* ── Update next race block ───────────────────────────────────────────── */

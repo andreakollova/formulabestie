@@ -30,6 +30,7 @@ load_dotenv()
 # ─────────────────────────────────────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────────────────────────────────────
+ESPN_RSS_URL = 'https://www.espn.com/espn/rss/f1/news'
 ESPN_F1_URL  = 'https://www.espn.com/f1/'
 BASE_URL     = 'https://www.espn.com'
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -121,7 +122,10 @@ def load_robots(base: str) -> RobotFileParser:
     return rp
 
 def allowed(rp: RobotFileParser, url: str) -> bool:
-    ok = rp.can_fetch(USER_AGENT, url)
+    try:
+        ok = rp.can_fetch(USER_AGENT, url)
+    except Exception:
+        return True  # default allow if robots.txt unreadable
     if not ok:
         log.warning(f'robots.txt blocks: {url}')
     return ok
@@ -175,35 +179,30 @@ def url_hash(url: str) -> str:
     return hashlib.sha256(url.encode()).hexdigest()[:20]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ESPN scraping
+# ESPN scraping — RSS first, HTML fallback
 # ─────────────────────────────────────────────────────────────────────────────
-def get_article_links(rp: RobotFileParser) -> list[dict]:
-    resp = safe_get(ESPN_F1_URL, rp)
-    if not resp:
-        return []
-
-    soup  = BeautifulSoup(resp.text, 'html.parser')
-    found = {}
-
-    for a in soup.find_all('a', href=True):
-        href = a['href'].strip()
-        if href.startswith('/'):
-            href = urljoin(BASE_URL, href)
-        if 'espn.com' not in href:
+def get_articles_from_rss() -> list[dict]:
+    """Fetch articles directly from ESPN RSS — includes title + description, no per-article requests needed."""
+    r = SESSION.get(ESPN_RSS_URL, timeout=TIMEOUT)
+    r.raise_for_status()
+    soup  = BeautifulSoup(r.text, 'xml')
+    found = []
+    for it in soup.find_all('item'):
+        title_tag = it.find('title')
+        desc_tag  = it.find('description')
+        link_tag  = it.find('link') or it.find('guid')
+        if not title_tag or not desc_tag:
             continue
-        if not any(p in href for p in ('/story/', '/news/')):
+        title = title_tag.get_text(strip=True)
+        desc  = BeautifulSoup(desc_tag.get_text(), 'html.parser').get_text(' ', strip=True)
+        url   = link_tag.get_text(strip=True) if link_tag else ''
+        if len(desc) < MIN_BODY_LEN:
             continue
-        if any(p in href for p in ('/video/', '/watch/', '/scores/')):
-            continue
-        if href in found:
-            continue
-        text = a.get_text(separator=' ', strip=True)
-        if len(text) < 20:
-            continue
-        found[href] = text
-
-    log.info(f'Found {len(found)} candidate article(s)')
-    return [{'url': u, 'title': t} for u, t in found.items()][:MAX_PER_RUN]
+        found.append({'url': url, 'title': title, 'body': desc})
+        if len(found) >= MAX_PER_RUN:
+            break
+    log.info(f'RSS: {len(found)} article(s) with descriptions')
+    return found
 
 
 def get_article_body(url: str, rp: RobotFileParser) -> str | None:
@@ -313,19 +312,22 @@ def run() -> None:
         log.error('OPENAI_API_KEY not set — aborting')
         sys.exit(1)
 
-    rp        = load_robots(BASE_URL)
     new_count = 0
 
     # ── Seen-URL tracking ──
     if USE_SUPABASE:
-        seen_urls = supabase_seen_urls()   # full URLs from Supabase
+        seen_urls = supabase_seen_urls()
     else:
         seen_hashes  = load_seen_local()
         current_news = load_news_local()
 
-    links = get_article_links(rp)
+    try:
+        links = get_articles_from_rss()
+    except Exception as exc:
+        log.error(f'RSS failed: {exc}')
+        links = []
     if not links:
-        log.warning('No links found — ESPN page structure may have changed')
+        log.warning('No articles found')
 
     for article in links:
         url = article['url']
@@ -342,13 +344,7 @@ def run() -> None:
                 continue
 
         log.info(f'New article: {url}')
-
-        body = get_article_body(url, rp)
-        if not body:
-            log.warning('  no body extracted — skip')
-            if not USE_SUPABASE:
-                seen_hashes.add(url_hash(url))  # mark as seen anyway
-            continue
+        body = article['body']
 
         formatted = gpt_format(article['title'], body)
         if not formatted:
