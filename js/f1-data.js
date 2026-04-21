@@ -232,7 +232,7 @@
       const w = lastRace.Results[0];
       items.push({ sym: 'WINNER', val: w.Driver.familyName.toUpperCase(),              pts: lastRace.raceName });
       const fl = lastRace.Results.find(r => r.FastestLap?.rank === '1');
-      if (fl) items.push({ sym: 'FL', val: fl.Driver.familyName.toUpperCase(),         pts: fl.FastestLap.Time.time });
+      if (fl) items.push({ sym: 'FL', val: fl.Driver.familyName.toUpperCase(), pts: fl.FastestLap.Time.time, cls: 'tick-fl' });
     }
     if (drivers.length >= 2) {
       const gap = +drivers[0].points - +drivers[1].points;
