@@ -191,3 +191,47 @@
   position: absolute;
   inset: 0;
 }
+
+/* ── Team Facts grid ── */
+.tf-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.tf-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 18px 22px;
+  border-bottom: var(--border);
+  border-right: var(--border);
+  transition: background var(--dur-fast) var(--ease);
+}
+.tf-item:nth-child(2n) { border-right: none; }
+.tf-item:nth-last-child(-n+2) { border-bottom: none; }
+.tf-item:hover { background: var(--color-border); }
+.tf-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-red);
+  letter-spacing: .06em;
+  flex-shrink: 0;
+  padding-top: 2px;
+  min-width: 20px;
+}
+.tf-text {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: 1.55;
+  color: var(--color-ink);
+}
+@media (max-width: 640px) {
+  .tf-grid { grid-template-columns: 1fr; }
+  .tf-item { border-right: none; }
+  .tf-item:nth-last-child(-n+2) { border-bottom: var(--border); }
+  .tf-item:last-child { border-bottom: none; }
+}
