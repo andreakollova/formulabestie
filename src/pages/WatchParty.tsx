@@ -576,56 +576,83 @@ export default function WatchParty() {
               </div>
               <div className="wp-pre-race-body">
                 <div className="pred-section">
-                  <div className="pred-section-kicker">YOUR PREDICTIONS</div>
-                  <h3 className="pred-section-title">Lock In Your Grid</h3>
-                  {predSaved && (
-                    <div className="pred-saved-toast">Predictions saved!</div>
-                  )}
-                  {existingEntry && !predSaved && (
-                    <div className="pred-existing-note">You already submitted. Update below.</div>
-                  )}
-                  <div className="pred-form">
-                    <DriverSelect
-                      label="P1 — Race Winner"
-                      value={predictions.p1}
-                      onChange={v => setPredictions(p => ({ ...p, p1: v }))}
-                      exclude={[predictions.p2, predictions.p3].filter(Boolean)}
-                    />
-                    <DriverSelect
-                      label="P2 — Second Place"
-                      value={predictions.p2}
-                      onChange={v => setPredictions(p => ({ ...p, p2: v }))}
-                      exclude={[predictions.p1, predictions.p3].filter(Boolean)}
-                    />
-                    <DriverSelect
-                      label="P3 — Third Place"
-                      value={predictions.p3}
-                      onChange={v => setPredictions(p => ({ ...p, p3: v }))}
-                      exclude={[predictions.p1, predictions.p2].filter(Boolean)}
-                    />
-                    <DriverSelect
-                      label="Fastest Lap"
-                      value={predictions.fastest_lap}
-                      onChange={v => setPredictions(p => ({ ...p, fastest_lap: v }))}
-                    />
-                    <DriverSelect
-                      label="DNF — First Out"
-                      value={predictions.dnf}
-                      onChange={v => setPredictions(p => ({ ...p, dnf: v }))}
-                    />
-                    <button
-                      className="fg-btn fg-btn-primary pred-submit"
-                      onClick={savePredictions}
-                      disabled={savingPred || !user}
-                    >
-                      {savingPred ? 'Saving…' : existingEntry ? 'Update Predictions' : 'Lock In Predictions'}
-                    </button>
-                    {!user && (
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-muted)', marginTop: 8 }}>
-                        <Link to="/login" style={{ color: 'var(--color-ink)', fontWeight: 700 }}>Sign in</Link> to submit predictions
-                      </p>
+                  <div className="pred-header">
+                    <div>
+                      <div className="pred-section-kicker">Pre-Race</div>
+                      <h3 className="pred-section-title">Your <em>Predictions</em></h3>
+                    </div>
+                    {predSaved && <div className="pred-saved-toast">Locked in ✓</div>}
+                    {existingEntry && !predSaved && (
+                      <div className="pred-existing-note">Submitted · Update anytime</div>
                     )}
                   </div>
+
+                  <div className="pred-picks">
+                    {[
+                      { key: 'p1' as const, label: 'P1', sublabel: 'Race Winner', icon: '🏆' },
+                      { key: 'p2' as const, label: 'P2', sublabel: 'Second Place', icon: '🥈' },
+                      { key: 'p3' as const, label: 'P3', sublabel: 'Third Place', icon: '🥉' },
+                      { key: 'fastest_lap' as const, label: 'FL', sublabel: 'Fastest Lap', icon: '⚡' },
+                      { key: 'dnf' as const, label: 'DNF', sublabel: 'First Out', icon: '💀' },
+                    ].map(({ key, label, sublabel, icon }) => {
+                      const allPicks = [predictions.p1, predictions.p2, predictions.p3].filter(Boolean)
+                      const exclude = key === 'p1' ? [predictions.p2, predictions.p3]
+                        : key === 'p2' ? [predictions.p1, predictions.p3]
+                        : key === 'p3' ? [predictions.p1, predictions.p2]
+                        : []
+                      const selectedDriver = DRIVERS.find(d => d.id === predictions[key])
+                      return (
+                        <div key={key} className="pred-pick-row">
+                          <div className="pred-pick-position">
+                            <span className="pred-pick-icon">{icon}</span>
+                            <div>
+                              <div className="pred-pick-label">{label}</div>
+                              <div className="pred-pick-sublabel">{sublabel}</div>
+                            </div>
+                          </div>
+                          <div className="pred-pick-select-wrap">
+                            {selectedDriver && (
+                              <div className="pred-pick-preview" style={{ borderColor: getTeamColor(selectedDriver.team) }}>
+                                <div className="pred-pick-photo">
+                                  {selectedDriver.photo
+                                    ? <img src={selectedDriver.photo} alt="" />
+                                    : selectedDriver.name[0]
+                                  }
+                                </div>
+                              </div>
+                            )}
+                            <select
+                              className="pred-select-new"
+                              value={predictions[key]}
+                              onChange={e => {
+                                const v = e.target.value
+                                setPredictions(p => ({ ...p, [key]: v }))
+                              }}
+                              disabled={!user}
+                            >
+                              <option value="">— Pick driver —</option>
+                              {DRIVERS.filter(d => !exclude.filter(x => x !== predictions[key]).includes(d.id)).map(d => (
+                                <option key={d.id} value={d.id}>#{d.number} {d.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <button
+                    className="pred-lock-btn"
+                    onClick={savePredictions}
+                    disabled={savingPred || !user}
+                  >
+                    {savingPred ? 'Saving…' : existingEntry ? 'Update Predictions' : 'Lock In Grid →'}
+                  </button>
+                  {!user && (
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-muted)', marginTop: 10 }}>
+                      <Link to="/login" style={{ color: 'var(--color-ink)', fontWeight: 700 }}>Sign in</Link> to submit predictions
+                    </p>
+                  )}
                 </div>
 
                 <div className="pred-chat-divider"><span>Fan Chat</span></div>
@@ -1155,9 +1182,19 @@ export default function WatchParty() {
         .wp-pre-race-body {
           flex: 1;
           overflow-y: auto;
-          padding: 24px;
+          padding: 0;
         }
-        .pred-section { margin-bottom: 24px; }
+        .pred-section {
+          padding: 28px 32px 0;
+          margin-bottom: 0;
+        }
+        .pred-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 20px;
+        }
         .pred-section-kicker {
           font-family: var(--font-mono);
           font-size: 9px;
@@ -1165,54 +1202,125 @@ export default function WatchParty() {
           letter-spacing: 0.28em;
           text-transform: uppercase;
           color: var(--color-red);
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
         .pred-section-title {
           font-family: var(--font-display);
-          font-size: 24px;
+          font-size: 26px;
           font-weight: 900;
-          letter-spacing: -0.02em;
+          letter-spacing: -0.03em;
           color: var(--color-ink);
-          margin-bottom: 16px;
+          margin: 0;
+          line-height: 1.1;
         }
+        .pred-section-title em { font-style: italic; color: var(--color-red); }
         .pred-saved-toast {
-          display: inline-block;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           background: var(--color-ink);
           color: #fff;
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
           letter-spacing: 0.1em;
           text-transform: uppercase;
           padding: 6px 12px;
-          border-radius: var(--radius);
-          margin-bottom: 12px;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .pred-existing-note {
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9px;
           color: var(--color-muted);
           letter-spacing: 0.04em;
-          margin-bottom: 12px;
+          white-space: nowrap;
+          flex-shrink: 0;
+          padding-top: 16px;
         }
-        .pred-form {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
+
+        /* Pick rows */
+        .pred-picks {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius);
+          overflow: hidden;
+          margin-bottom: 16px;
+        }
+        .pred-pick-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--color-border);
+          background: var(--color-paper);
+          transition: background 0.1s ease;
+        }
+        .pred-pick-row:last-child { border-bottom: none; }
+        .pred-pick-row:hover { background: var(--color-paper-2, #f8f8f8); }
+        .pred-pick-position {
+          display: flex;
+          align-items: center;
           gap: 12px;
-          max-width: 560px;
+          flex-shrink: 0;
+          min-width: 110px;
         }
-        .pred-field { display: flex; flex-direction: column; gap: 4px; }
-        .pred-label {
+        .pred-pick-icon {
+          font-size: 18px;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+        .pred-pick-label {
           font-family: var(--font-mono);
-          font-size: 9px;
+          font-size: 13px;
           font-weight: 700;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: var(--color-muted);
+          color: var(--color-ink);
+          letter-spacing: 0.04em;
+          line-height: 1.1;
         }
-        .pred-select {
-          padding: 9px 10px;
-          border: 1px solid var(--color-ink);
+        .pred-pick-sublabel {
+          font-family: var(--font-mono);
+          font-size: 8px;
+          font-weight: 600;
+          color: var(--color-muted);
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+        .pred-pick-select-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex: 1;
+          justify-content: flex-end;
+        }
+        .pred-pick-preview {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          border: 2.5px solid;
+          overflow: hidden;
+          background: #111;
+          flex-shrink: 0;
+        }
+        .pred-pick-photo {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          color: #fff;
+        }
+        .pred-pick-photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+        .pred-select-new {
+          padding: 8px 28px 8px 10px;
+          border: 1px solid var(--color-border);
           border-radius: var(--radius);
           background: var(--color-paper);
           font-family: var(--font-mono);
@@ -1221,13 +1329,35 @@ export default function WatchParty() {
           appearance: none;
           cursor: pointer;
           outline: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 8px center;
+          max-width: 200px;
+          width: 100%;
         }
-        .pred-select:focus { border-color: var(--color-red); }
-        .pred-submit {
-          grid-column: 1 / -1;
-          margin-top: 4px;
+        .pred-select-new:focus { border-color: var(--color-ink); outline: none; }
+        .pred-select-new:disabled { opacity: 0.4; cursor: default; }
+
+        .pred-lock-btn {
           display: block;
+          width: 100%;
+          padding: 14px;
+          margin: 0 0 0;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          background: var(--color-ink);
+          color: #fff;
+          border: none;
+          cursor: pointer;
+          transition: background 0.14s ease;
+          border-radius: 0 0 var(--radius) var(--radius);
         }
+        .pred-lock-btn:hover { background: #333; }
+        .pred-lock-btn:disabled { opacity: 0.5; cursor: default; }
+
         .pred-chat-divider {
           display: flex;
           align-items: center;
