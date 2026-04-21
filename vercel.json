@@ -1,5 +1,17 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": ".",
   "rewrites": [
-    { "source": "/", "destination": "/pitwall.html" }
+    { "source": "/", "destination": "/pitwall.html" },
+    { "source": "/login", "destination": "/dist/app/app.html" },
+    { "source": "/register", "destination": "/dist/app/app.html" },
+    { "source": "/onboarding", "destination": "/dist/app/app.html" },
+    { "source": "/me", "destination": "/dist/app/app.html" },
+    { "source": "/me/(.*)", "destination": "/dist/app/app.html" },
+    { "source": "/profile/:username", "destination": "/dist/app/app.html" },
+    { "source": "/watch-parties", "destination": "/dist/app/app.html" },
+    { "source": "/watch-party/:slug", "destination": "/dist/app/app.html" },
+    { "source": "/drivers", "destination": "/dist/app/app.html" },
+    { "source": "/drivers/:driverId", "destination": "/dist/app/app.html" }
   ]
 }
