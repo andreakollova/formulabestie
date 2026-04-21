@@ -271,6 +271,16 @@
   font-weight: 600;
   border-radius: var(--radius);
 }
+.news-team-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
 .news-item.neutral .news-kicker { background: var(--color-ink); }
 .news-num { font-family: var(--font-mono); font-size: var(--text-caption); color: var(--color-muted); }
 .news-headline {

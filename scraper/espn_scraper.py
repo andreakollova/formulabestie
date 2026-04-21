@@ -254,8 +254,14 @@ tag       — One short category label, max 2 words. Choose the most fitting:
             Technical · Calendar · Race Day · Qualifying · Team Orders · Debut ·
             Regulation · Incident · Strategy · Safety
 
+team      — The PRIMARY team this article is about. Use EXACTLY one of these slugs:
+            ferrari · mercedes · mclaren · red_bull · aston_martin · alpine ·
+            williams · racing_bulls · haas · audi · cadillac · f1
+            Use "f1" only if the article is genuinely about multiple teams or the
+            sport in general with no single primary team.
+
 Respond ONLY with valid JSON, no markdown:
-{"tag": "...", "headline": "...", "summary": "..."}\
+{"tag": "...", "headline": "...", "summary": "...", "team": "..."}\
 """
 
 def gpt_format(title: str, body: str) -> dict | None:
@@ -272,7 +278,7 @@ def gpt_format(title: str, body: str) -> dict | None:
             response_format={'type': 'json_object'},
         )
         data = json.loads(resp.choices[0].message.content.strip())
-        for key in ('tag', 'headline', 'summary'):
+        for key in ('tag', 'headline', 'summary', 'team'):
             if not data.get(key):
                 log.error(f'GPT missing key: {key}')
                 return None
@@ -355,6 +361,7 @@ def run() -> None:
             'tag':        formatted['tag'],
             'headline':   formatted['headline'],
             'summary':    formatted['summary'],
+            'team':       formatted.get('team', 'f1'),
             'url':        url,
             'scraped_at': datetime.now(timezone.utc).isoformat(),
         }

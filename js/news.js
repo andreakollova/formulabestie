@@ -19,6 +19,36 @@
   const RW_CACHE_PREFIX = 'fw_gpt_';
   const RW_CACHE_TTL = 6 * 60 * 60 * 1000; /* 6 hours */
 
+  /* ── Team badge ── */
+  const TEAM_COLORS = {
+    ferrari:       'var(--team-ferrari)',
+    mercedes:      'var(--team-mercedes)',
+    mclaren:       'var(--team-mclaren)',
+    red_bull:      'var(--team-red-bull)',
+    aston_martin:  'var(--team-aston)',
+    alpine:        'var(--team-alpine)',
+    williams:      'var(--team-williams)',
+    racing_bulls:  'var(--team-rb)',
+    haas:          'var(--team-haas)',
+    audi:          'var(--team-audi)',
+    cadillac:      'var(--team-cadillac)',
+  };
+  const TEAM_NAMES = {
+    ferrari: 'Ferrari', mercedes: 'Mercedes', mclaren: 'McLaren',
+    red_bull: 'Red Bull', aston_martin: 'Aston Martin', alpine: 'Alpine',
+    williams: 'Williams', racing_bulls: 'Racing Bulls', haas: 'Haas',
+    audi: 'Audi', cadillac: 'Cadillac', f1: 'F1',
+  };
+  const DARK_TEXT_TEAMS = new Set(['mercedes', 'williams', 'haas']);
+
+  function teamBadgeHTML(team) {
+    if (!team || team === 'f1') return '';
+    const color   = TEAM_COLORS[team] || 'var(--color-muted)';
+    const name    = TEAM_NAMES[team]  || team;
+    const txtCol  = DARK_TEXT_TEAMS.has(team) ? '#000' : '#fff';
+    return `<span class="news-team-badge" style="background:${color};color:${txtCol}">${name}</span>`;
+  }
+
   function timeAgo(isoStr) {
     const diff = Date.now() - new Date(isoStr).getTime();
     const m    = Math.floor(diff / 60000);
@@ -116,7 +146,10 @@
       return `
         <article class="news-item"${link}>
           <div class="news-meta">
-            <span class="news-kicker">${safe(a.tag)}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="news-kicker">${safe(a.tag)}</span>
+              ${teamBadgeHTML(a.team)}
+            </div>
             <span class="news-num">${String(i + 1).padStart(2, '0')}${ago ? ' · ' + ago : ''}</span>
           </div>
           <h3 class="news-headline">${safe(rw.headline)}</h3>
@@ -153,7 +186,10 @@
       return `
         <article class="fn-item"${link}>
           <div class="news-meta">
-            <span class="news-kicker">${safe(a.tag)}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="news-kicker">${safe(a.tag)}</span>
+              ${teamBadgeHTML(a.team)}
+            </div>
             <span class="news-num">${String(num).padStart(2, '0')}${ago ? ' · ' + ago : ''}</span>
           </div>
           <h3 class="news-headline">${safe(rw.headline)}</h3>
@@ -168,7 +204,10 @@
     block.innerHTML = `
       <article class="fn-lead"${leadLink}>
         <div class="news-meta">
-          <span class="news-kicker">${safe(lead.tag)}</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="news-kicker">${safe(lead.tag)}</span>
+            ${teamBadgeHTML(lead.team)}
+          </div>
           <span class="news-num">01${leadAgo ? ' · ' + leadAgo : ''}</span>
         </div>
         <h3 class="news-headline">${safe(rwLead.headline)}</h3>
@@ -182,7 +221,7 @@
 
   /* ── Fetch helpers ── */
   async function fetchArticles(limit) {
-    const url  = `${SB_URL}/rest/v1/pitwall_news?select=tag,headline,summary,url,scraped_at&order=scraped_at.desc&limit=${limit}`;
+    const url  = `${SB_URL}/rest/v1/pitwall_news?select=tag,team,headline,summary,url,scraped_at&order=scraped_at.desc&limit=${limit}`;
     const resp = await fetch(url, {
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
     });
