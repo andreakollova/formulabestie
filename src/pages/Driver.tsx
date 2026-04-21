@@ -169,6 +169,14 @@ export default function Driver() {
             {driver.number}
           </div>
           <div className="dp-hero-content">
+            {/* Circular photo */}
+            {driver.photo && (
+              <div className="dp-photo-ring" style={{ borderColor: teamColor }}>
+                <div className="dp-photo">
+                  <img src={driver.photo} alt={driver.name} />
+                </div>
+              </div>
+            )}
             <div className="dp-hero-kicker">
               <span className="dp-team-dot" style={{ background: teamColor }} />
               {getTeamName(driver.team)}
@@ -306,6 +314,28 @@ export default function Driver() {
           z-index: 1;
           padding-left: 8px;
           padding-bottom: 24px;
+        }
+        .dp-photo-ring {
+          width: 100px;
+          height: 100px;
+          border-radius: 50%;
+          border: 4px solid;
+          padding: 3px;
+          background: var(--color-paper);
+          margin-bottom: 14px;
+        }
+        .dp-photo {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          overflow: hidden;
+          background: #111;
+        }
+        .dp-photo img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: top center;
         }
         .dp-hero-kicker {
           display: flex;

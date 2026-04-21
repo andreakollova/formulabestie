@@ -301,12 +301,20 @@ export default function WatchParty() {
       attended: next,
     })
     setIsAttending(next)
-    // Update attendees list
     if (next && user) {
-      const { data: p } = await supabase.from('profiles').select('username, avatar_url').eq('id', user.id).single()
+      const { data: p } = await supabase.from('profiles').select('username, avatar_url, team_id').eq('id', user.id).single()
       setAttendees(prev => {
         if (prev.find(a => a.user_id === user.id)) return prev
         return [...prev, { user_id: user.id, profiles: p as { username: string; avatar_url: string | null } }]
+      })
+      // Post a join notification to the global room
+      const roomKey = `race:${race.id}:global`
+      await supabase.from('fg_chat_messages').insert({
+        race_id: race.id,
+        room: roomKey,
+        user_id: user.id,
+        text: `joined the party 🎉`,
+        mood: '🎉',
       })
     } else {
       setAttendees(prev => prev.filter(a => a.user_id !== user?.id))
@@ -456,49 +464,99 @@ export default function WatchParty() {
           {/* UPCOMING phase */}
           {status === 'upcoming' && (
             <div className="wp-phase-upcoming">
-              <div className="wp-phase-kicker">SLEEP MODE</div>
-              <h2 className="wp-phase-title">{race.name}</h2>
-              <p className="wp-phase-sub">
-                The watch party opens 1 hour before race start. Come back then for predictions and live chat.
-              </p>
-
-              <div className="wp-countdown">
-                <div className="wp-countdown-label">PARTY OPENS IN</div>
-                <div className="wp-countdown-blocks">
-                  {cdDays > 0 && (
-                    <div className="wp-cd-block">
-                      <span className="wp-cd-num">{String(cdDays).padStart(2, '0')}</span>
-                      <span className="wp-cd-unit">days</span>
-                    </div>
-                  )}
-                  <div className="wp-cd-block">
-                    <span className="wp-cd-num">{String(cdHours).padStart(2, '0')}</span>
-                    <span className="wp-cd-unit">hrs</span>
-                  </div>
-                  <div className="wp-cd-block">
-                    <span className="wp-cd-num">{String(cdMins).padStart(2, '0')}</span>
-                    <span className="wp-cd-unit">min</span>
-                  </div>
-                  <div className="wp-cd-block">
-                    <span className="wp-cd-num">{String(cdSecs).padStart(2, '0')}</span>
-                    <span className="wp-cd-unit">sec</span>
-                  </div>
-                </div>
-                <div className="wp-cd-raceday">
-                  Race day: {new Date(race.race_start).toLocaleDateString('en-GB', {
-                    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-                  })}
+              {/* Race hero banner */}
+              <div className="wp-race-hero">
+                <div className="wp-race-hero-round">Round {race.round} · {race.season}</div>
+                <h2 className="wp-race-hero-name">{race.name}</h2>
+                <div className="wp-race-hero-circuit">{race.circuit} · {race.country}</div>
+                <div className="wp-race-hero-date">
+                  {new Date(race.race_start).toLocaleDateString('en-GB', {
+                    weekday: 'long', day: 'numeric', month: 'long',
+                  })} · {new Date(race.race_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
 
-              {isAdmin && (
-                <div className="wp-admin-bar">
-                  <span className="wp-admin-label">ADMIN</span>
-                  <button className="wp-admin-btn" onClick={forceOpenParty}>
-                    Force Open (Pre-Race)
-                  </button>
+              {/* Two-column: countdown + attending */}
+              <div className="wp-upcoming-body">
+                <div className="wp-upcoming-left">
+                  <div className="wp-countdown">
+                    <div className="wp-countdown-label">Party Opens In</div>
+                    <div className="wp-countdown-blocks">
+                      {cdDays > 0 && (
+                        <div className="wp-cd-block">
+                          <span className="wp-cd-num">{String(cdDays).padStart(2, '0')}</span>
+                          <span className="wp-cd-unit">days</span>
+                        </div>
+                      )}
+                      <div className="wp-cd-block">
+                        <span className="wp-cd-num">{String(cdHours).padStart(2, '0')}</span>
+                        <span className="wp-cd-unit">hrs</span>
+                      </div>
+                      <div className="wp-cd-block">
+                        <span className="wp-cd-num">{String(cdMins).padStart(2, '0')}</span>
+                        <span className="wp-cd-unit">min</span>
+                      </div>
+                      <div className="wp-cd-block">
+                        <span className="wp-cd-num">{String(cdSecs).padStart(2, '0')}</span>
+                        <span className="wp-cd-unit">sec</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="wp-phase-sub">
+                    The watch party opens 1 hour before lights out. Come back for predictions and live chat.
+                  </p>
+                  {isAdmin && (
+                    <div className="wp-admin-bar">
+                      <span className="wp-admin-label">ADMIN</span>
+                      <button className="wp-admin-btn" onClick={forceOpenParty}>
+                        Force Open (Pre-Race)
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+
+                <div className="wp-upcoming-right">
+                  <div className="wp-who-label">Who's Going</div>
+                  {attendees.length > 0 ? (
+                    <>
+                      <div className="wp-who-avatars">
+                        {attendees.slice(0, 6).map(a => (
+                          <div key={a.user_id} className="wp-who-avatar" title={a.profiles?.username ?? '?'}>
+                            {a.profiles?.avatar_url
+                              ? <img src={a.profiles.avatar_url} alt="" />
+                              : (a.profiles?.username ?? '?')[0].toUpperCase()
+                            }
+                          </div>
+                        ))}
+                      </div>
+                      <div className="wp-who-count">
+                        {attendees.length === 1
+                          ? '1 fan plans to attend'
+                          : `${attendees.length} fans plan to attend`
+                        }
+                      </div>
+                      {attendees.length > 6 && (
+                        <div className="wp-who-more">+{attendees.length - 6} others</div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="wp-who-empty">No one yet — be the first!</div>
+                  )}
+                  {user ? (
+                    <button
+                      className={`wp-big-attend-btn${isAttending ? ' wp-big-attend-btn-on' : ''}`}
+                      onClick={toggleAttending}
+                      disabled={togglingAttend}
+                    >
+                      {isAttending ? "I'll be there ✓" : "I'll be there"}
+                    </button>
+                  ) : (
+                    <Link to="/login" className="wp-big-attend-btn">
+                      Sign in to join
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -851,35 +909,156 @@ export default function WatchParty() {
           flex: 1;
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          padding: 48px 40px;
           overflow-y: auto;
         }
-        .wp-phase-kicker {
+
+        /* Race hero banner */
+        .wp-race-hero {
+          background: var(--color-ink);
+          color: #fff;
+          padding: 40px 40px 36px;
+          border-bottom: 3px solid var(--color-red);
+        }
+        .wp-race-hero-round {
           font-family: var(--font-mono);
           font-size: 9px;
           font-weight: 700;
-          letter-spacing: 0.28em;
+          letter-spacing: 0.22em;
           text-transform: uppercase;
-          color: var(--color-muted);
+          color: var(--color-red);
           margin-bottom: 10px;
         }
-        .wp-phase-title {
+        .wp-race-hero-name {
           font-family: var(--font-display);
-          font-size: clamp(28px, 3vw, 44px);
+          font-size: clamp(28px, 3.5vw, 52px);
           font-weight: 900;
           letter-spacing: -0.03em;
-          color: var(--color-ink);
-          margin-bottom: 12px;
+          line-height: 1.0;
+          color: #fff;
+          margin-bottom: 10px;
         }
+        .wp-race-hero-circuit {
+          font-family: var(--font-sans);
+          font-size: 14px;
+          color: rgba(255,255,255,0.6);
+          margin-bottom: 6px;
+        }
+        .wp-race-hero-date {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          color: rgba(255,255,255,0.5);
+          letter-spacing: 0.06em;
+        }
+
+        /* Two-column body */
+        .wp-upcoming-body {
+          display: grid;
+          grid-template-columns: 1fr 280px;
+          gap: 0;
+          flex: 1;
+          min-height: 0;
+        }
+        .wp-upcoming-left {
+          padding: 36px 40px;
+          border-right: 1px solid var(--color-border);
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+        .wp-upcoming-right {
+          padding: 32px 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
         .wp-phase-sub {
           font-family: var(--font-sans);
-          font-size: 15px;
+          font-size: 14px;
           color: var(--color-muted);
-          max-width: 420px;
           line-height: 1.65;
-          margin-bottom: 36px;
+          max-width: 380px;
         }
+
+        /* Who's going */
+        .wp-who-label {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+          margin-bottom: 4px;
+        }
+        .wp-who-avatars {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-bottom: 4px;
+        }
+        .wp-who-avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #111;
+          color: #fff;
+          font-family: var(--font-mono);
+          font-size: 13px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          border: 2px solid var(--color-paper);
+          box-shadow: 0 0 0 1.5px var(--color-border);
+        }
+        .wp-who-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .wp-who-count {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--color-muted);
+          letter-spacing: 0.04em;
+        }
+        .wp-who-more {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          color: var(--color-muted);
+          letter-spacing: 0.04em;
+        }
+        .wp-who-empty {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--color-muted);
+          letter-spacing: 0.04em;
+          font-style: italic;
+        }
+        .wp-big-attend-btn {
+          display: block;
+          width: 100%;
+          padding: 12px 16px;
+          text-align: center;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          border: 2px solid var(--color-ink);
+          border-radius: var(--radius);
+          background: transparent;
+          color: var(--color-ink);
+          cursor: pointer;
+          text-decoration: none;
+          transition: all 0.14s ease;
+          margin-top: auto;
+        }
+        .wp-big-attend-btn:hover { background: var(--color-ink); color: #fff; }
+        .wp-big-attend-btn.wp-big-attend-btn-on {
+          background: var(--color-red);
+          border-color: var(--color-red);
+          color: #fff;
+        }
+        .wp-big-attend-btn.wp-big-attend-btn-on:hover { background: #c00; border-color: #c00; }
+        .wp-big-attend-btn:disabled { opacity: 0.5; cursor: default; }
 
         /* Countdown */
         .wp-countdown {
@@ -1100,6 +1279,33 @@ export default function WatchParty() {
           font-weight: 700;
         }
 
+        /* Join notification */
+        .fg-chat-join {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 16px;
+          background: var(--color-paper-2, #f8f8f8);
+          border-left: 2px solid var(--color-red);
+          margin: 4px 0;
+        }
+        .fg-chat-avatar-sm {
+          width: 22px !important;
+          height: 22px !important;
+          font-size: 9px !important;
+          flex-shrink: 0;
+        }
+        .fg-chat-join-text {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--color-muted);
+          letter-spacing: 0.04em;
+        }
+        .fg-chat-join-name {
+          font-weight: 700;
+          color: var(--color-ink);
+        }
+
         /* Chat wrapper */
         .wp-chat-area-inner {
           display: flex;
@@ -1111,6 +1317,11 @@ export default function WatchParty() {
         .fg-chat-wrap { overflow-y: auto; flex: 1; }
 
         /* Mobile */
+        @media (max-width: 768px) {
+          .wp-upcoming-body { grid-template-columns: 1fr; }
+          .wp-upcoming-left { border-right: none; border-bottom: 1px solid var(--color-border); padding: 24px 20px; }
+          .wp-upcoming-right { padding: 24px 20px; }
+        }
         @media (max-width: 640px) {
           .wp-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
           .wp-sidebar {
@@ -1123,9 +1334,10 @@ export default function WatchParty() {
           .wp-room-tab { flex: 1; justify-content: center; }
           .wp-race-name { font-size: 18px; }
           .wp-race-date { margin-bottom: 12px; }
-          .wp-phase-upcoming { padding: 24px 16px; }
+          .wp-race-hero { padding: 24px 20px 20px; }
+          .wp-race-hero-name { font-size: 26px; }
           .pred-form { grid-template-columns: 1fr; }
-          .wp-countdown { padding: 20px 20px; }
+          .wp-countdown { padding: 20px; }
         }
       `}</style>
     </div>
@@ -1141,29 +1353,51 @@ export default function WatchParty() {
               {isReadOnly ? 'No messages in this watch party.' : 'No messages yet. Be the first!'}
             </div>
           )}
-          {messages.map(m => (
-            <div key={m.id} className="fg-chat-msg">
-              <div
-                className="fg-chat-avatar"
-                style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
-              >
-                {m.profiles?.avatar_url
-                  ? <img src={m.profiles.avatar_url} alt="" />
-                  : (m.profiles?.username ?? '?')[0].toUpperCase()
-                }
-              </div>
-              <div className="fg-chat-body">
-                <div className="fg-chat-meta">
-                  <span className="fg-chat-name">{m.profiles?.username ?? 'fan'}</span>
-                  <span className="fg-chat-time">
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {m.mood && <span style={{ fontSize: 13 }}>{m.mood}</span>}
+          {messages.map(m => {
+            // Join notification style
+            if (m.text === 'joined the party 🎉') {
+              return (
+                <div key={m.id} className="fg-chat-join">
+                  <div
+                    className="fg-chat-avatar fg-chat-avatar-sm"
+                    style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
+                  >
+                    {m.profiles?.avatar_url
+                      ? <img src={m.profiles.avatar_url} alt="" />
+                      : (m.profiles?.username ?? '?')[0].toUpperCase()
+                    }
+                  </div>
+                  <div className="fg-chat-join-text">
+                    <span className="fg-chat-join-name">{m.profiles?.username ?? 'Someone'}</span>
+                    {' joined the party 🎉'}
+                  </div>
                 </div>
-                <div className="fg-chat-text">{m.text}</div>
+              )
+            }
+            return (
+              <div key={m.id} className="fg-chat-msg">
+                <div
+                  className="fg-chat-avatar"
+                  style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
+                >
+                  {m.profiles?.avatar_url
+                    ? <img src={m.profiles.avatar_url} alt="" />
+                    : (m.profiles?.username ?? '?')[0].toUpperCase()
+                  }
+                </div>
+                <div className="fg-chat-body">
+                  <div className="fg-chat-meta">
+                    <span className="fg-chat-name">{m.profiles?.username ?? 'fan'}</span>
+                    <span className="fg-chat-time">
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {m.mood && <span style={{ fontSize: 13 }}>{m.mood}</span>}
+                  </div>
+                  <div className="fg-chat-text">{m.text}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
           <div ref={bottomRef} />
         </div>
 
