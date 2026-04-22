@@ -243,14 +243,36 @@ export default function Me() {
   const saveDrivers = async () => {
     if (!user) return
     setSavingDrivers(true)
+
+    const oldFav = profile?.fav_driver_id
+    const oldSecondary = profile?.secondary_driver_id
+    const newFav = driverEdit.fav || null
+    const newSecondary = driverEdit.secondary || null
+
+    // Update profile
     await supabase.from('profiles').update({
-      fav_driver_id: driverEdit.fav || null,
-      secondary_driver_id: driverEdit.secondary || null,
+      fav_driver_id: newFav,
+      secondary_driver_id: newSecondary,
     }).eq('id', user.id)
+
+    // Sync fg_driver_fans: remove old drivers, add new ones
+    const oldDrivers = [oldFav, oldSecondary].filter(Boolean) as string[]
+    const newDrivers = [newFav, newSecondary].filter(Boolean) as string[]
+    const removed = oldDrivers.filter(d => !newDrivers.includes(d))
+    const added = newDrivers.filter(d => !oldDrivers.includes(d))
+    await Promise.all([
+      ...removed.map(driverId =>
+        supabase.from('fg_driver_fans').delete().eq('user_id', user.id).eq('driver_id', driverId)
+      ),
+      ...added.map(driverId =>
+        supabase.from('fg_driver_fans').upsert({ user_id: user.id, driver_id: driverId })
+      ),
+    ])
+
     setProfile(p => p ? {
       ...p,
-      fav_driver_id: driverEdit.fav || null,
-      secondary_driver_id: driverEdit.secondary || null,
+      fav_driver_id: newFav,
+      secondary_driver_id: newSecondary,
     } : p)
     setSavingDrivers(false)
     setEditingDrivers(false)

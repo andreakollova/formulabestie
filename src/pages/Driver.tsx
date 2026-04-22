@@ -277,13 +277,18 @@ export default function Driver() {
         {/* Vault section */}
         <div className="dp-vault-section">
           <div className="dp-vault-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="fg-kicker">THE VAULT</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{
                 fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700,
-                letterSpacing: '0.1em', textTransform: 'uppercase',
-                padding: '3px 8px', borderRadius: 'var(--radius)',
-                background: teamColor, color: '#fff'
+                letterSpacing: '0.28em', textTransform: 'uppercase',
+                color: 'var(--color-red)',
+              }}>THE VAULT</span>
+              <span style={{
+                fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                padding: '4px 10px',
+                background: teamColor, color: '#fff',
+                display: 'inline-block',
               }}>{getTeamName(driver.team)}</span>
             </div>
             <h2 className="dp-chat-title">
