@@ -12,6 +12,15 @@ type Race = Database['public']['Tables']['fg_races']['Row']
 type ChatMessage = Database['public']['Tables']['fg_chat_messages']['Row'] & {
   profiles: { username: string; avatar_url: string | null; team_id: string | null } | null
 }
+type DM = { id: string; sender_id: string; receiver_id: string; text: string; created_at: string }
+type DmPartner = { id: string; username: string; avatar_url: string | null }
+
+function getRoomKey(activeRoom: string, raceId: string, teamId: string | null): string | null {
+  if (activeRoom === 'global') return `race:${raceId}:global`
+  if (activeRoom === 'team') return `race:${raceId}:team:${teamId ?? 'none'}`
+  if (activeRoom.startsWith('driver:')) return `race:${raceId}:${activeRoom}`
+  return null
+}
 
 const MOODS = ['🔥', '😱', '😭', '🎉', '👏', '😤', '❤️', '💔', '🏆', '🤞']
 const QUICK_REACTIONS = ['🔥', '🎉', '😭', '❤️', '👏']
@@ -123,8 +132,14 @@ export default function WatchParty() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [mood, setMood] = useState('')
-  const [room, setRoom] = useState<'global' | 'team'>('global')
+  const [activeRoom, setActiveRoom] = useState<string>('global')
   const [loading, setLoading] = useState(true)
+  const [favDrivers, setFavDrivers] = useState<string[]>([])
+  const [dmInbox, setDmInbox] = useState<DmPartner[]>([])
+  const [dmMessages, setDmMessages] = useState<DM[]>([])
+  const [dmInput, setDmInput] = useState('')
+  const [sendingDm, setSendingDm] = useState(false)
+  const dmBottomRef = useRef<HTMLDivElement>(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
   const [profile, setProfile] = useState<{ team_id: string | null; username: string; avatar_url: string | null } | null>(null)
@@ -200,12 +215,39 @@ export default function WatchParty() {
       })
   }, [race])
 
-  // Load messages + realtime
+  // Load fav drivers
   useEffect(() => {
-    if (!race) return
-    const roomKey = room === 'global'
-      ? `race:${race.id}:global`
-      : `race:${race.id}:team:${profile?.team_id ?? 'none'}`
+    if (!user) return
+    supabase.from('fg_driver_fans').select('driver_id').eq('user_id', user.id)
+      .then(({ data }) => { if (data) setFavDrivers(data.map((r: { driver_id: string }) => r.driver_id)) })
+  }, [user])
+
+  // Load DM inbox for sidebar
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('fg_direct_messages')
+      .select('sender_id, receiver_id')
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .limit(50)
+      .then(async ({ data }) => {
+        if (!data) return
+        const partnerIds = [...new Set(
+          (data as { sender_id: string; receiver_id: string }[])
+            .flatMap(m => [m.sender_id, m.receiver_id])
+            .filter(id => id !== user.id)
+        )].slice(0, 10)
+        if (partnerIds.length === 0) return
+        const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', partnerIds)
+        if (profiles) setDmInbox(profiles as DmPartner[])
+      })
+  }, [user])
+
+  // Load party chat messages + realtime
+  useEffect(() => {
+    if (!race || activeRoom.startsWith('dm:')) return
+    const roomKey = getRoomKey(activeRoom, race.id, profile?.team_id ?? null)
+    if (!roomKey) return
 
     supabase
       .from('fg_chat_messages')
@@ -232,12 +274,46 @@ export default function WatchParty() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [race, room, profile?.team_id])
+  }, [race, activeRoom, profile?.team_id])
+
+  // Load DM messages + realtime
+  useEffect(() => {
+    if (!activeRoom.startsWith('dm:') || !user) return
+    const partnerId = activeRoom.slice(3)
+    const f1 = `sender_id.eq.${user.id},receiver_id.eq.${partnerId}`
+    const f2 = `sender_id.eq.${partnerId},receiver_id.eq.${user.id}`
+
+    supabase
+      .from('fg_direct_messages')
+      .select('id, sender_id, receiver_id, text, created_at')
+      .or(`and(${f1}),and(${f2})`)
+      .order('created_at', { ascending: true })
+      .limit(100)
+      .then(({ data }) => setDmMessages((data ?? []) as DM[]))
+
+    const channel = supabase
+      .channel(`dm-party:${[user.id, partnerId].sort().join(':')}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fg_direct_messages' },
+        (payload) => {
+          const m = payload.new as DM
+          if (
+            (m.sender_id === user.id && m.receiver_id === partnerId) ||
+            (m.sender_id === partnerId && m.receiver_id === user.id)
+          ) setDmMessages(prev => prev.find(x => x.id === m.id) ? prev : [...prev, m])
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [activeRoom, user])
 
   // Scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+  useEffect(() => {
+    dmBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [dmMessages])
 
   const appendMessage = (data: ChatMessage) => {
     setMessages(prev => {
@@ -247,7 +323,19 @@ export default function WatchParty() {
   }
 
   const send = async () => {
-    if (!input.trim() || !race || !user) return
+    if (!user) return
+    if (activeRoom.startsWith('dm:')) {
+      if (!dmInput.trim()) return
+      const partnerId = activeRoom.slice(3)
+      setSendingDm(true)
+      const text = dmInput.trim()
+      setDmInput('')
+      await supabase.from('fg_direct_messages').insert({ sender_id: user.id, receiver_id: partnerId, text })
+      setDmMessages(prev => [...prev, { id: crypto.randomUUID(), sender_id: user.id, receiver_id: partnerId, text, created_at: new Date().toISOString() }])
+      setSendingDm(false)
+      return
+    }
+    if (!input.trim() || !race) return
     const check = filterMessage(input.trim())
     if (!check.ok) {
       setSendError(check.reason ?? 'Message not allowed.')
@@ -255,9 +343,8 @@ export default function WatchParty() {
       return
     }
     setSending(true)
-    const roomKey = room === 'global'
-      ? `race:${race.id}:global`
-      : `race:${race.id}:team:${profile?.team_id ?? 'none'}`
+    const roomKey = getRoomKey(activeRoom, race.id, profile?.team_id ?? null)
+    if (!roomKey) { setSending(false); return }
     const text = input.trim()
     const moodVal = mood || null
     setInput('')
@@ -270,12 +357,10 @@ export default function WatchParty() {
       mood: moodVal,
     })
     if (error) {
-      console.error('[chat send]', error)
       setSendError('Failed to send. Try again.')
       setTimeout(() => setSendError(''), 3000)
       setInput(text)
     } else {
-      // Optimistic local message (realtime will also deliver it)
       appendMessage({
         id: crypto.randomUUID(),
         race_id: race.id,
@@ -293,9 +378,8 @@ export default function WatchParty() {
 
   const sendReaction = async (emoji: string) => {
     if (!race || !user) return
-    const roomKey = room === 'global'
-      ? `race:${race.id}:global`
-      : `race:${race.id}:team:${profile?.team_id ?? 'none'}`
+    const roomKey = getRoomKey(activeRoom, race.id, profile?.team_id ?? null)
+    if (!roomKey) return
     const { error } = await supabase.from('fg_chat_messages').insert({
       race_id: race.id,
       room: roomKey,
@@ -442,19 +526,6 @@ export default function WatchParty() {
           </div>
         </div>
         <div className="wp-strip-right">
-          {chatAvailable && (
-            <div className="wp-room-tabs">
-              <button className={`wp-room-tab${room === 'global' ? ' active' : ''}`} onClick={() => setRoom('global')}>
-                Global
-              </button>
-              {profile?.team_id && (
-                <button className={`wp-room-tab${room === 'team' ? ' active' : ''}`} onClick={() => setRoom('team')}>
-                  <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: getTeamColor(profile.team_id!), marginRight: 6, flexShrink: 0 }} />
-                  Team
-                </button>
-              )}
-            </div>
-          )}
           {user && !chatReadOnly && (
             <button
               className={`wp-attend-btn${isAttending ? ' wp-attend-btn-on' : ''}`}
@@ -469,6 +540,59 @@ export default function WatchParty() {
 
       {/* ── Main content ── */}
       <div className="wp-main">
+
+        {/* ── Sidebar (chat-available phases) ── */}
+        {chatAvailable && (
+          <div className="wp-sidebar">
+            <div className="wp-sidebar-section">
+              <div className="wp-sidebar-sec-label">Party</div>
+              <button className={`wp-sidebar-item${activeRoom === 'global' ? ' active' : ''}`} onClick={() => setActiveRoom('global')}>
+                <span className="wp-sidebar-dot" style={{ background: '#0A0A0A' }} />
+                Party
+              </button>
+              {profile?.team_id && (
+                <button className={`wp-sidebar-item${activeRoom === 'team' ? ' active' : ''}`} onClick={() => setActiveRoom('team')}>
+                  <span className="wp-sidebar-dot" style={{ background: getTeamColor(profile.team_id!) }} />
+                  Team
+                </button>
+              )}
+            </div>
+
+            {favDrivers.length > 0 && (
+              <div className="wp-sidebar-section">
+                <div className="wp-sidebar-sec-label">Drivers</div>
+                {favDrivers.map(dId => {
+                  const driver = DRIVERS.find(d => d.id === dId)
+                  if (!driver) return null
+                  const rk = `driver:${dId}`
+                  return (
+                    <button key={dId} className={`wp-sidebar-item${activeRoom === rk ? ' active' : ''}`} onClick={() => setActiveRoom(rk)}>
+                      <span className="wp-sidebar-dot" style={{ background: getTeamColor(driver.team) }} />
+                      {driver.name.split(' ').slice(-1)[0]}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {dmInbox.length > 0 && (
+              <div className="wp-sidebar-section">
+                <div className="wp-sidebar-sec-label">Messages</div>
+                {dmInbox.map(p => {
+                  const rk = `dm:${p.id}`
+                  return (
+                    <button key={p.id} className={`wp-sidebar-item${activeRoom === rk ? ' active' : ''}`} onClick={() => setActiveRoom(rk)}>
+                      <div className="wp-sidebar-avatar">
+                        {p.avatar_url ? <img src={p.avatar_url} alt="" /> : p.username[0].toUpperCase()}
+                      </div>
+                      <span className="wp-sidebar-item-label">{p.username}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* UPCOMING phase */}
         {status === 'upcoming' && (
@@ -571,7 +695,6 @@ export default function WatchParty() {
                 <button className="wp-admin-btn wp-admin-btn-close" onClick={forceCloseParty}>Close Party</button>
               </div>
             )}
-            {/* Predictions panel */}
             <div className="wp-pred-panel">
               <div className="wp-pred-panel-head">
                 <div className="pred-section-kicker">Pre-Race</div>
@@ -627,12 +750,15 @@ export default function WatchParty() {
               </button>
               {!user && <p className="pred-signin-note"><Link to="/login">Sign in</Link> to predict</p>}
             </div>
-            {/* Chat */}
             <div className="wp-chat-col">
-              <div className="wp-chat-header">
-                <span className="wp-chat-header-label">Pre-Race Chat</span>
-              </div>
-              {renderChat()}
+              {activeRoom.startsWith('dm:') ? renderDM() : (
+                <>
+                  <div className="wp-chat-header">
+                    <span className="wp-chat-header-label">{getChatLabel()}</span>
+                  </div>
+                  {renderChat()}
+                </>
+              )}
             </div>
           </div>
         )}
@@ -640,58 +766,70 @@ export default function WatchParty() {
         {/* LIVE phase */}
         {status === 'live' && (
           <div className="wp-live-layout wp-live-layout-chat">
-            {user && (
+            {user && !activeRoom.startsWith('dm:') && (
               <div className="wp-reaction-bar">
                 {QUICK_REACTIONS.map(emoji => (
                   <button key={emoji} className="wp-reaction-btn" onClick={() => sendReaction(emoji)}>{emoji}</button>
                 ))}
               </div>
             )}
-            <div className="wp-chat-header wp-chat-header-live">
-              <span className="fg-live-dot" style={{ marginRight: 8 }} />
-              <span className="wp-chat-header-label" style={{ color: 'var(--color-red)' }}>
-                {race.name} — {room === 'global' ? 'Global' : 'Team'} Chat
-              </span>
-            </div>
-            {renderChat()}
+            {activeRoom.startsWith('dm:') ? renderDM() : (
+              <>
+                <div className="wp-chat-header wp-chat-header-live">
+                  <span className="fg-live-dot" style={{ marginRight: 8 }} />
+                  <span className="wp-chat-header-label" style={{ color: 'var(--color-red)' }}>
+                    {getChatLabel()}
+                  </span>
+                </div>
+                {renderChat()}
+              </>
+            )}
           </div>
         )}
 
         {/* POST-RACE phase */}
         {status === 'post-race' && (
           <div className="wp-live-layout wp-live-layout-chat">
-            <div className="wp-chat-header">
-              <span className="wp-chat-header-label">Post-Race Vibes 🥂 — {room === 'global' ? 'Global' : 'Team'}</span>
-            </div>
-            {renderChat()}
+            {activeRoom.startsWith('dm:') ? renderDM() : (
+              <>
+                <div className="wp-chat-header">
+                  <span className="wp-chat-header-label">Post-Race Vibes 🥂 — {getChatLabel()}</span>
+                </div>
+                {renderChat()}
+              </>
+            )}
           </div>
         )}
 
         {/* FINISHED phase */}
         {status === 'finished' && (
           <div className="wp-live-layout wp-live-layout-chat">
-            <div className="wp-chat-header">
-              <span className="wp-chat-header-label">Archive — {race.name}</span>
-            </div>
-            {existingEntry && (
-              <div className="wp-archive-pred">
-                <div className="fg-kicker" style={{ marginBottom: 8 }}>Your Predictions</div>
-                <div className="wp-pred-archive-grid">
-                  {(['p1', 'p2', 'p3', 'fastest_lap', 'dnf'] as const).map(key => {
-                    const labels: Record<string, string> = { p1: 'P1', p2: 'P2', p3: 'P3', fastest_lap: 'Fastest Lap', dnf: 'DNF' }
-                    const driverId = (existingEntry as Record<string, string>)[`pred_${key}`]
-                    const driver = DRIVERS.find(d => d.id === driverId)
-                    return (
-                      <div key={key} className="wp-pred-archive-item">
-                        <span className="wp-pred-archive-label">{labels[key]}</span>
-                        <span className="wp-pred-archive-val">{driver ? `#${driver.number} ${driver.name}` : '—'}</span>
-                      </div>
-                    )
-                  })}
+            {activeRoom.startsWith('dm:') ? renderDM() : (
+              <>
+                <div className="wp-chat-header">
+                  <span className="wp-chat-header-label">Archive — {race.name}</span>
                 </div>
-              </div>
+                {existingEntry && (
+                  <div className="wp-archive-pred">
+                    <div className="fg-kicker" style={{ marginBottom: 8 }}>Your Predictions</div>
+                    <div className="wp-pred-archive-grid">
+                      {(['p1', 'p2', 'p3', 'fastest_lap', 'dnf'] as const).map(key => {
+                        const labels: Record<string, string> = { p1: 'P1', p2: 'P2', p3: 'P3', fastest_lap: 'Fastest Lap', dnf: 'DNF' }
+                        const driverId = (existingEntry as Record<string, string>)[`pred_${key}`]
+                        const driver = DRIVERS.find(d => d.id === driverId)
+                        return (
+                          <div key={key} className="wp-pred-archive-item">
+                            <span className="wp-pred-archive-label">{labels[key]}</span>
+                            <span className="wp-pred-archive-val">{driver ? `#${driver.number} ${driver.name}` : '—'}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                {renderChat(true)}
+              </>
             )}
-            {renderChat(true)}
           </div>
         )}
       </div>
@@ -772,27 +910,6 @@ export default function WatchParty() {
         }
         .wp-back:hover { color: var(--color-ink); }
 
-        /* Room tabs in strip */
-        .wp-room-tabs { display: flex; gap: 4px; }
-        .wp-room-tab {
-          padding: 5px 12px;
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: var(--color-muted);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius);
-          background: transparent;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          transition: all 0.1s ease;
-        }
-        .wp-room-tab:hover { background: var(--color-paper-2); color: var(--color-ink); }
-        .wp-room-tab.active { background: var(--color-ink); color: #fff; border-color: var(--color-ink); }
-
         /* Attend btn in strip */
         .wp-attend-btn {
           padding: 6px 14px;
@@ -836,13 +953,80 @@ export default function WatchParty() {
         .wp-main {
           flex: 1;
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
           height: calc(100dvh - 56px - 52px);
           overflow: hidden;
         }
 
+        /* ── Sidebar ── */
+        .wp-sidebar {
+          width: 164px;
+          flex-shrink: 0;
+          border-right: 1px solid var(--color-border);
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          background: var(--color-paper);
+        }
+        .wp-sidebar-section {
+          padding: 14px 0 6px;
+          border-bottom: 1px solid var(--color-border);
+        }
+        .wp-sidebar-section:last-child { border-bottom: none; }
+        .wp-sidebar-sec-label {
+          font-family: var(--font-mono);
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+          padding: 0 14px;
+          margin-bottom: 4px;
+        }
+        .wp-sidebar-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 7px 14px;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          color: var(--color-muted);
+          background: none;
+          border: none;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.1s, color 0.1s;
+          overflow: hidden;
+        }
+        .wp-sidebar-item:hover { background: var(--color-border); color: var(--color-ink); }
+        .wp-sidebar-item.active { background: var(--color-ink); color: #fff; }
+        .wp-sidebar-item.active .wp-sidebar-dot { opacity: 1; }
+        .wp-sidebar-dot {
+          width: 7px; height: 7px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .wp-sidebar-avatar {
+          width: 18px; height: 18px;
+          border-radius: 50%;
+          background: #111; color: #fff;
+          font-family: var(--font-mono);
+          font-size: 8px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden; flex-shrink: 0;
+        }
+        .wp-sidebar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .wp-sidebar-item-label {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
         /* ── Upcoming ── */
-        .wp-upcoming { flex: 1; overflow-y: auto; }
+        .wp-upcoming { flex: 1; overflow-y: auto; min-width: 0; }
         .wp-hero {
           background: var(--color-ink);
           padding: 56px 48px 48px;
@@ -997,11 +1181,14 @@ export default function WatchParty() {
           display: grid;
           grid-template-columns: 280px 1fr;
           overflow: hidden;
+          min-width: 0;
         }
         .wp-live-layout-chat {
           grid-template-columns: 1fr;
           flex-direction: column;
           display: flex;
+          flex: 1;
+          min-width: 0;
         }
         .wp-pred-panel {
           border-right: 1px solid var(--color-border);
@@ -1175,6 +1362,9 @@ export default function WatchParty() {
 
         /* Mobile */
         @media (max-width: 768px) {
+          .wp-sidebar { width: 120px; }
+          .wp-sidebar-sec-label { font-size: 7px; padding: 0 10px; }
+          .wp-sidebar-item { padding: 7px 10px; font-size: 9px; }
           .wp-upcoming-body { grid-template-columns: 1fr; }
           .wp-upcoming-cd { border-right: none; border-bottom: 1px solid var(--color-border); padding: 28px 24px; }
           .wp-upcoming-rsvp { padding: 28px 24px; }
@@ -1182,6 +1372,7 @@ export default function WatchParty() {
           .wp-pred-panel { border-right: none; border-bottom: 1px solid var(--color-border); max-height: 300px; }
         }
         @media (max-width: 600px) {
+          .wp-sidebar { display: none; }
           .wp-strip { padding: 0 12px; }
           .wp-strip-meta { display: none; }
           .wp-hero { padding: 32px 20px 28px; }
@@ -1304,6 +1495,79 @@ export default function WatchParty() {
               </div>
             )}
           </>
+        )}
+      </div>
+    )
+  }
+
+  function getChatLabel() {
+    if (activeRoom === 'global') return 'Party Chat'
+    if (activeRoom === 'team') return 'Team Chat'
+    if (activeRoom.startsWith('driver:')) {
+      const dId = activeRoom.slice(7)
+      const driver = DRIVERS.find(d => d.id === dId)
+      return driver ? `${driver.name.split(' ').slice(-1)[0]} Fan Chat` : 'Driver Chat'
+    }
+    return 'Chat'
+  }
+
+  function renderDM() {
+    const partnerId = activeRoom.slice(3)
+    const partner = dmInbox.find(p => p.id === partnerId)
+    return (
+      <div className="wp-chat-area-inner">
+        <div className="wp-chat-header">
+          <span className="wp-chat-header-label">
+            {partner ? `DM · ${partner.username}` : 'Messages'}
+          </span>
+        </div>
+        <div className="fg-chat-wrap">
+          {dmMessages.length === 0 && (
+            <div style={{ textAlign: 'center', color: 'var(--color-muted)', fontSize: 13, fontFamily: 'var(--font-mono)', padding: '40px 0', letterSpacing: '0.05em' }}>
+              No messages yet. Say hi! 👋
+            </div>
+          )}
+          {dmMessages.map(m => {
+            const isOwn = m.sender_id === user?.id
+            const senderName = isOwn ? (profile?.username ?? 'me') : (partner?.username ?? '?')
+            const senderAvatar = isOwn ? (profile?.avatar_url ?? null) : (partner?.avatar_url ?? null)
+            return (
+              <div key={m.id} className={`fg-chat-msg${isOwn ? ' fg-chat-msg--own' : ''}`}>
+                <div className="fg-chat-avatar">
+                  {senderAvatar ? <img src={senderAvatar} alt="" /> : senderName[0].toUpperCase()}
+                </div>
+                <div className="fg-chat-body">
+                  <div className="fg-chat-meta">
+                    <span className="fg-chat-name">{senderName}</span>
+                    <span className="fg-chat-time">
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="fg-chat-bubble">
+                    <div className="fg-chat-text">{m.text}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <div ref={dmBottomRef} />
+        </div>
+        {user ? (
+          <div className="fg-chat-input-row">
+            <textarea
+              className="fg-chat-input"
+              placeholder={`Message ${partner?.username ?? ''}…`}
+              value={dmInput}
+              onChange={e => setDmInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+              rows={1}
+            />
+            <button className="fg-chat-send" onClick={send} disabled={sendingDm || !dmInput.trim()}>↑</button>
+          </div>
+        ) : (
+          <div style={{ padding: '8px 16px', borderTop: '1px solid var(--color-border)', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-muted)', flexShrink: 0 }}>
+            <Link to="/login" style={{ color: 'var(--color-ink)', fontWeight: 700 }}>Sign in</Link> to message
+          </div>
         )}
       </div>
     )
