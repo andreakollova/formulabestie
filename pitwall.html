@@ -620,20 +620,24 @@
 <!-- ── Drivers ─────────────────────────────────────────────────────────── -->
 <section id="drivers-section" class="drivers-home-section page-wrap" style="padding-top:var(--space-xl);" data-reveal>
   <div class="drv-home-head">
-    <div class="drv-home-kicker">◆ 2026 Grid</div>
-    <h2 class="drv-home-title">The <em>Drivers.</em></h2>
+    <div class="drv-home-head-top">
+      <div>
+        <div class="drv-home-kicker">◆ 2026 Grid</div>
+        <h2 class="drv-home-title">The <em>Drivers.</em></h2>
+      </div>
+      <div class="drv-scroll-arrows">
+        <button class="drv-arrow-btn" onclick="document.getElementById('drvHomeScroll').scrollBy({left:-320,behavior:'smooth'})" aria-label="Scroll left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="drv-arrow-btn" onclick="document.getElementById('drvHomeScroll').scrollBy({left:320,behavior:'smooth'})" aria-label="Scroll right">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
     <div class="drv-home-rule"></div>
   </div>
   <div class="drv-home-scroll" id="drvHomeScroll">
     <!-- filled by js/drivers-home.js -->
-  </div>
-  <div class="drv-scroll-arrows">
-    <button class="drv-arrow-btn" onclick="document.getElementById('drvHomeScroll').scrollBy({left:-320,behavior:'smooth'})" aria-label="Scroll left">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <button class="drv-arrow-btn" onclick="document.getElementById('drvHomeScroll').scrollBy({left:320,behavior:'smooth'})" aria-label="Scroll right">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
   </div>
 </section>
 
@@ -995,7 +999,7 @@
   font-weight: 700;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.55);
   margin-bottom: 10px;
   display: block;
 }
@@ -1024,7 +1028,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 10px;
   font-weight: 600;
-  color: rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.45);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding-bottom: 4px;
@@ -1033,7 +1037,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 40px;
   font-weight: 300;
-  color: rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.3);
   line-height: 1;
   margin-bottom: 6px;
   flex-shrink: 0;
@@ -1083,7 +1087,7 @@
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.28);
+  color: rgba(255,255,255,0.6);
   margin-bottom: 8px;
   display: block;
 }
@@ -1130,7 +1134,7 @@
 .wpc-count {
   font-family: var(--font-mono, monospace);
   font-size: 9px;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.6);
   letter-spacing: 0.04em;
 }
 .wpc-actions {
@@ -1534,27 +1538,33 @@
   letter-spacing: 0.04em;
   text-align: center;
 }
+.drv-home-head-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
 .drv-scroll-arrows {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
+  gap: 6px;
+  align-self: center;
+  padding-bottom: 4px;
 }
 .drv-arrow-btn {
-  width: 36px;
-  height: 36px;
-  border: 2px solid var(--color-ink, #111);
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--color-ink, #111);
   background: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.12s, color 0.12s, transform 0.1s;
   color: var(--color-ink, #111);
   flex-shrink: 0;
 }
-.drv-arrow-btn:hover { background: var(--color-ink, #111); color: #fff; }
+.drv-arrow-btn:hover { background: var(--color-ink, #111); color: #fff; transform: scale(1.08); }
 </style>
 
 <!-- ── JavaScript ────────────────────────────────────────────────────── -->

@@ -200,6 +200,7 @@ export default function Me() {
     try {
       localStorage.setItem('fw_team_id', teamId)
       localStorage.setItem('fw_team_color', color)
+      localStorage.setItem('fw_game_team', JSON.stringify({ name: getTeamName(teamId) }))
       window.dispatchEvent(new CustomEvent('fw_team_changed', { detail: { color } }))
     } catch {}
     setTeamPickerOpen(false)

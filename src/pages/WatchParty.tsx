@@ -1458,7 +1458,7 @@ export default function WatchParty() {
                 <button
                   key={m}
                   className={`fg-mood${mood === m ? ' selected' : ''}`}
-                  onClick={() => setMood(mood === m ? '' : m)}
+                  onClick={() => { setMood(mood === m ? '' : m); setInput(prev => prev + m) }}
                   title={m}
                 >
                   {m}
