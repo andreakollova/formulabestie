@@ -415,11 +415,15 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Chat messages ── */
 /* ── Modern bubble chat ── */
+/* ══════════════════════════════════════
+   ULTRA-MODERN BUBBLE CHAT
+══════════════════════════════════════ */
+
 .fg-chat-wrap {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 16px 12px;
+  gap: 14px;
+  padding: 20px 16px 12px;
   overflow-y: auto;
   flex: 1;
 }
@@ -427,9 +431,9 @@ input, textarea, select { font-family: inherit; }
 /* Base message row */
 .fg-chat-msg {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-end;
-  max-width: 88%;
+  max-width: 80%;
 }
 
 /* Own messages → right-aligned */
@@ -440,21 +444,20 @@ input, textarea, select { font-family: inherit; }
 
 /* Avatar */
 .fg-chat-avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--color-paper-3, #eee);
+  background: #111;
   border: 2px solid var(--color-border);
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-ink);
+  color: #fff;
   overflow: hidden;
-  margin-bottom: 2px;
 }
 .fg-chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -462,99 +465,147 @@ input, textarea, select { font-family: inherit; }
 .fg-chat-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
-}
-
-/* Bubble */
-.fg-chat-bubble {
-  background: var(--color-paper-2, #f4f4f4);
-  border-radius: 4px 16px 16px 16px;
-  padding: 8px 12px;
   max-width: 100%;
 }
-.fg-chat-msg--own .fg-chat-bubble {
-  background: var(--color-ink, #111);
-  border-radius: 16px 4px 16px 16px;
-}
 
-/* Name + time */
+/* Meta: name + time */
 .fg-chat-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 2px;
-  margin-bottom: 1px;
+  gap: 5px;
+  padding: 0 6px;
 }
+.fg-chat-msg--own .fg-chat-meta { justify-content: flex-end; }
+
 .fg-chat-name {
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 700;
   color: var(--color-muted);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.fg-chat-msg--own .fg-chat-meta { justify-content: flex-end; }
-.fg-chat-msg--own .fg-chat-name { display: none; }
+.fg-chat-msg--own .fg-chat-name { color: var(--color-ink); font-weight: 700; }
+.fg-chat-name-link { text-decoration: none; color: inherit; }
+.fg-chat-name-link:hover { text-decoration: underline; }
+
 .fg-chat-time {
   font-family: var(--font-mono);
   font-size: 8px;
   color: var(--color-muted);
-  letter-spacing: 0.02em;
+  opacity: 0.65;
+}
+
+/* Bubble */
+.fg-chat-bubble {
+  background: #efefef;
+  border-radius: 20px 20px 20px 5px;
+  padding: 10px 15px;
+  max-width: 100%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  position: relative;
+}
+.fg-chat-msg--own .fg-chat-bubble {
+  background: var(--color-ink, #111);
+  border-radius: 20px 20px 5px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+
+/* Mood floating badge */
+.fg-chat-mood-badge {
+  font-size: 13px;
+  margin-right: 5px;
+  vertical-align: middle;
 }
 
 /* Message text */
 .fg-chat-text {
   font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.45;
   color: var(--color-ink);
   word-break: break-word;
 }
 .fg-chat-msg--own .fg-chat-text { color: #fff; }
 
-/* Input row */
+/* System / join message */
+.fg-chat-join {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 0;
+}
+.fg-chat-join-text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+  background: var(--color-paper-2, #f5f5f5);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+.fg-chat-join-name {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+/* ── Input area ── */
 .fg-chat-input-row {
   display: flex;
-  gap: 0;
-  border-top: 2px solid var(--color-ink);
-  align-items: stretch;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-paper);
   flex-shrink: 0;
 }
 .fg-chat-input {
   flex: 1;
-  padding: 12px 14px;
-  font-size: 13px;
+  padding: 10px 16px;
+  font-size: 14px;
   font-family: var(--font-sans);
   color: var(--color-ink);
-  background: var(--color-paper);
-  border: none;
+  background: #f2f2f2;
+  border: 1.5px solid transparent;
+  border-radius: 24px;
   outline: none;
   resize: none;
-  max-height: 80px;
+  max-height: 100px;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
-.fg-chat-input::placeholder { color: var(--color-muted); }
+.fg-chat-input:focus { border-color: var(--color-border); background: #fff; }
+.fg-chat-input::placeholder { color: #aaa; }
+.fg-chat-input:disabled { opacity: 0.45; }
+
 .fg-chat-send {
-  padding: 12px 18px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
   background: var(--color-ink);
   color: #fff;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  flex-shrink: 0;
   border: none;
-  border-left: 2px solid var(--color-ink);
   cursor: pointer;
-  transition: background 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+  transition: background 0.12s ease, transform 0.1s ease;
 }
-.fg-chat-send:hover { background: #333; }
-.fg-chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.fg-chat-send:hover:not(:disabled) { background: #333; transform: scale(1.06); }
+.fg-chat-send:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ── Avatar stack (attending) ── */
 .avatar-stack { display: flex; align-items: center; }
 .avatar-stack .fg-chat-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 10px;
   margin-left: -8px;
   border: 2px solid white;
 }
@@ -593,13 +644,17 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Mood tags ── */
 .fg-mood {
-  display: inline-block;
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: var(--radius);
-  transition: background var(--dur-fast) var(--ease);
+  padding: 5px 7px;
+  border-radius: 20px;
+  transition: background 0.12s ease, transform 0.1s ease;
   background: none;
   border: none;
+  flex-shrink: 0;
 }
-.fg-mood:hover, .fg-mood.selected { background: var(--color-paper-3); }
+.fg-mood:hover { background: var(--color-paper-3); transform: scale(1.15); }
+.fg-mood.selected { background: var(--color-ink); transform: scale(1.1); }

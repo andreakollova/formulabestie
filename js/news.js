@@ -16,8 +16,9 @@
     try { return localStorage.getItem('fw_openai_key') || ''; } catch { return ''; }
   }());
   const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
-  const RW_CACHE_PREFIX = 'fw_gpt_';
+  const RW_CACHE_PREFIX = 'fw_gpt_v3_';
   const RW_CACHE_TTL = 6 * 60 * 60 * 1000; /* 6 hours */
+  const RW_CACHE_VER = 'v2'; /* bump to invalidate old cache */
 
   /* ── Team badge ── */
   const TEAM_COLORS = {
@@ -41,16 +42,49 @@
     // hyphen variants
     'red-bull': 'Red Bull', 'aston-martin': 'Aston Martin', 'racing-bulls': 'Racing Bulls',
   };
-  const DARK_TEXT_TEAMS = new Set(['mercedes', 'williams', 'haas']);
+  /* extra display names for partial matches */
+  const TEAM_ALIASES = {
+    'rb': 'Racing Bulls', 'visa_rb': 'Racing Bulls', 'visa rb': 'Racing Bulls',
+    'kick_sauber': 'Audi', 'kick sauber': 'Audi', 'sauber': 'Audi',
+    'alpha_tauri': 'Racing Bulls', 'alphatauri': 'Racing Bulls',
+    'force_india': 'Alpine', 'renault': 'Alpine',
+  };
 
-  function teamBadgeHTML(team) {
-    if (!team || team === 'f1') return '';
-    // Normalize: hyphens → underscores so both 'red-bull' and 'red_bull' match
-    const key = team.replace(/-/g, '_');
-    const color   = TEAM_COLORS[key] || TEAM_COLORS[team] || 'var(--color-muted)';
-    const name    = TEAM_NAMES[key]  || TEAM_NAMES[team]  || team;
-    const txtCol  = (DARK_TEXT_TEAMS.has(key) || DARK_TEXT_TEAMS.has(team)) ? '#000' : '#fff';
-    return `<span class="news-team-badge" style="background:${color};color:${txtCol}">${name}</span>`;
+  /* keyword → team key, scanned against headline+summary */
+  const TEAM_KEYWORDS = [
+    { key: 'ferrari',      words: ['ferrari', 'leclerc', 'sainz', 'hamilton'] },
+    { key: 'mercedes',     words: ['mercedes', 'russell', 'antonelli'] },
+    { key: 'mclaren',      words: ['mclaren', 'norris', 'piastri'] },
+    { key: 'red_bull',     words: ['red bull', 'verstappen', 'perez', 'lawson'] },
+    { key: 'aston_martin', words: ['aston martin', 'alonso', 'stroll'] },
+    { key: 'alpine',       words: ['alpine', 'gasly', 'doohan', 'renault'] },
+    { key: 'williams',     words: ['williams', 'albon', 'sainz jr', 'colapinto'] },
+    { key: 'racing_bulls', words: ['racing bulls', 'rb', 'tsunoda', 'hadjar', 'alphatauri'] },
+    { key: 'haas',         words: ['haas', 'bearman', 'ocon'] },
+    { key: 'audi',         words: ['audi', 'sauber', 'hulkenberg', 'bortoleto'] },
+    { key: 'cadillac',     words: ['cadillac', 'andretti'] },
+  ];
+
+  function detectTeam(text) {
+    const lower = text.toLowerCase();
+    for (const { key, words } of TEAM_KEYWORDS) {
+      if (words.some(w => lower.includes(w))) return key;
+    }
+    return null;
+  }
+
+  function teamBadgeHTML(team, fallbackText) {
+    // Try the explicit team field first, then scan headline/summary for keywords
+    let key = null;
+    if (team && team.toLowerCase() !== 'f1') {
+      key = team.toLowerCase().replace(/[\s-]+/g, '_');
+    } else if (fallbackText) {
+      key = detectTeam(fallbackText);
+    }
+    if (!key) return '';
+    const color = TEAM_COLORS[key] || 'var(--color-muted)';
+    const name  = TEAM_NAMES[key]  || TEAM_ALIASES[key] || key;
+    return `<span class="news-team-badge" style="background:${color}">${name}</span>`;
   }
 
   function timeAgo(isoStr) {
@@ -88,7 +122,7 @@
           model: 'gpt-4o-mini',
           messages: [{
             role: 'system',
-            content: 'You are a sharp F1 journalist writing in a confident, editorial voice. Rewrite articles with different wording but accurate facts. Always respond with ONLY valid JSON containing exactly two fields: "headline" (punchy, max 12 words) and "summary" (2–3 sentences, max 60 words).'
+            content: 'You are a motorsport journalist writing for a young, female-forward Formula racing fan community. Your voice is confident, witty, and a little cheeky — think girl talk meets pit lane insider. Keep it real, keep it sharp, never dumbed down. IMPORTANT: Never write "F1" — always write "Formula" instead. Always respond with ONLY valid JSON containing exactly two fields: "headline" (punchy and fun, max 12 words) and "summary" (2–3 sentences, max 60 words, conversational but accurate).'
           }, {
             role: 'user',
             content: `Original headline: "${headline}"\nOriginal summary: "${summary}"`
@@ -152,7 +186,7 @@
           <div class="news-meta">
             <div style="display:flex;align-items:center;gap:6px;">
               <span class="news-kicker">${safe(a.tag)}</span>
-              ${teamBadgeHTML(a.team)}
+              ${teamBadgeHTML(a.team, a.headline + ' ' + a.summary)}
             </div>
             <span class="news-num">${String(i + 1).padStart(2, '0')}${ago ? ' · ' + ago : ''}</span>
           </div>
@@ -192,7 +226,7 @@
           <div class="news-meta">
             <div style="display:flex;align-items:center;gap:6px;">
               <span class="news-kicker">${safe(a.tag)}</span>
-              ${teamBadgeHTML(a.team)}
+              ${teamBadgeHTML(a.team, a.headline + ' ' + a.summary)}
             </div>
             <span class="news-num">${String(num).padStart(2, '0')}${ago ? ' · ' + ago : ''}</span>
           </div>
@@ -210,7 +244,7 @@
         <div class="news-meta">
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="news-kicker">${safe(lead.tag)}</span>
-            ${teamBadgeHTML(lead.team)}
+            ${teamBadgeHTML(lead.team, lead.headline + ' ' + lead.summary)}
           </div>
           <span class="news-num">01${leadAgo ? ' · ' + leadAgo : ''}</span>
         </div>
@@ -236,7 +270,7 @@
 
   async function loadNews() {
     try {
-      const articles = await fetchArticles(20);
+      const articles = await fetchArticles(30);
       await renderNews(articles.slice(0, 3));
       await renderNewsFull(articles);
       return;

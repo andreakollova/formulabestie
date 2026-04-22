@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { DRIVERS, getTeamColor } from '../data/teams'
 import { computePhase, isWatchPartyOpen, type Phase } from '../lib/racePhase'
+import { filterMessage } from '../lib/contentFilter'
 import type { Database } from '../lib/supabase'
 
 type Race = Database['public']['Tables']['fg_races']['Row']
@@ -14,6 +15,17 @@ type ChatMessage = Database['public']['Tables']['fg_chat_messages']['Row'] & {
 
 const MOODS = ['🔥', '😱', '😭', '🎉', '👏', '😤', '❤️', '💔', '🏆', '🤞']
 const QUICK_REACTIONS = ['🔥', '🎉', '😭', '❤️', '👏']
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Bahrain': '🇧🇭', 'Saudi Arabia': '🇸🇦', 'Australia': '🇦🇺',
+  'Japan': '🇯🇵', 'China': '🇨🇳', 'United States': '🇺🇸',
+  'Italy': '🇮🇹', 'Monaco': '🇲🇨', 'Canada': '🇨🇦',
+  'Spain': '🇪🇸', 'Austria': '🇦🇹', 'United Kingdom': '🇬🇧',
+  'Hungary': '🇭🇺', 'Belgium': '🇧🇪', 'Netherlands': '🇳🇱',
+  'Azerbaijan': '🇦🇿', 'Singapore': '🇸🇬', 'Mexico': '🇲🇽',
+  'Brazil': '🇧🇷', 'Qatar': '🇶🇦', 'UAE': '🇦🇪', 'Abu Dhabi': '🇦🇪',
+  'France': '🇫🇷', 'Germany': '🇩🇪', 'Portugal': '🇵🇹',
+}
 
 type PredictionForm = {
   p1: string
@@ -114,7 +126,8 @@ export default function WatchParty() {
   const [room, setRoom] = useState<'global' | 'team'>('global')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [profile, setProfile] = useState<{ team_id: string | null; username: string } | null>(null)
+  const [sendError, setSendError] = useState('')
+  const [profile, setProfile] = useState<{ team_id: string | null; username: string; avatar_url: string | null } | null>(null)
   const [predictions, setPredictions] = useState<PredictionForm>(EMPTY_PREDICTION)
   const [existingEntry, setExistingEntry] = useState<Record<string, string> | null>(null)
   const [savingPred, setSavingPred] = useState(false)
@@ -143,10 +156,10 @@ export default function WatchParty() {
     if (!user) return
     supabase
       .from('profiles')
-      .select('team_id, username')
+      .select('team_id, username, avatar_url')
       .eq('id', user.id)
       .single()
-      .then(({ data }) => setProfile(data as { team_id: string | null; username: string }))
+      .then(({ data }) => setProfile(data as { team_id: string | null; username: string; avatar_url: string | null }))
   }, [user])
 
   // Load existing predictions entry
@@ -235,6 +248,12 @@ export default function WatchParty() {
 
   const send = async () => {
     if (!input.trim() || !race || !user) return
+    const check = filterMessage(input.trim())
+    if (!check.ok) {
+      setSendError(check.reason ?? 'Message not allowed.')
+      setTimeout(() => setSendError(''), 4000)
+      return
+    }
     setSending(true)
     const roomKey = room === 'global'
       ? `race:${race.id}:global`
@@ -243,14 +262,32 @@ export default function WatchParty() {
     const moodVal = mood || null
     setInput('')
     setMood('')
-    const { data, error } = await supabase.from('fg_chat_messages').insert({
+    const { error } = await supabase.from('fg_chat_messages').insert({
       race_id: race.id,
       room: roomKey,
       user_id: user.id,
       text,
       mood: moodVal,
-    }).select('*, profiles(username, avatar_url, team_id)').single()
-    if (!error && data) appendMessage(data as ChatMessage)
+    })
+    if (error) {
+      console.error('[chat send]', error)
+      setSendError('Failed to send. Try again.')
+      setTimeout(() => setSendError(''), 3000)
+      setInput(text)
+    } else {
+      // Optimistic local message (realtime will also deliver it)
+      appendMessage({
+        id: crypto.randomUUID(),
+        race_id: race.id,
+        driver_id: null,
+        room: roomKey,
+        user_id: user.id,
+        text,
+        mood: moodVal,
+        created_at: new Date().toISOString(),
+        profiles: { username: profile?.username ?? 'me', avatar_url: profile?.avatar_url ?? null, team_id: profile?.team_id ?? null },
+      } as ChatMessage)
+    }
     setSending(false)
   }
 
@@ -259,14 +296,26 @@ export default function WatchParty() {
     const roomKey = room === 'global'
       ? `race:${race.id}:global`
       : `race:${race.id}:team:${profile?.team_id ?? 'none'}`
-    const { data, error } = await supabase.from('fg_chat_messages').insert({
+    const { error } = await supabase.from('fg_chat_messages').insert({
       race_id: race.id,
       room: roomKey,
       user_id: user.id,
       text: emoji,
       mood: emoji,
-    }).select('*, profiles(username, avatar_url, team_id)').single()
-    if (!error && data) appendMessage(data as ChatMessage)
+    })
+    if (!error) {
+      appendMessage({
+        id: crypto.randomUUID(),
+        race_id: race.id,
+        driver_id: null,
+        room: roomKey,
+        user_id: user.id,
+        text: emoji,
+        mood: emoji,
+        created_at: new Date().toISOString(),
+        profiles: { username: profile?.username ?? 'me', avatar_url: profile?.avatar_url ?? null, team_id: profile?.team_id ?? null },
+      } as ChatMessage)
+    }
   }
 
   const handleKey = (e: React.KeyboardEvent) => {
@@ -379,377 +428,335 @@ export default function WatchParty() {
     <div className="wp-shell">
       <Nav active="parties" />
 
-      <div className="wp-layout">
-        {/* ── Left sidebar ── */}
-        <div className="wp-sidebar">
-          {/* Back link */}
-          <Link to="/watch-parties" className="wp-back">
-            ← All Races
-          </Link>
-
-          {/* Race status */}
-          <div className="wp-sidebar-status">
-            <StatusBadge status={status} />
+      {/* ── Race strip ── */}
+      <div className="wp-strip">
+        <div className="wp-strip-left">
+          <Link to="/watch-parties" className="wp-back">← All Races</Link>
+          <div className="wp-strip-divider" />
+          <StatusBadge status={status} />
+          <div className="wp-strip-info">
+            <span className="wp-strip-name">{COUNTRY_FLAGS[race.country] ?? ''} {race.name}</span>
+            <span className="wp-strip-meta">
+              {race.circuit} · R{race.round} · {new Date(race.race_start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+            </span>
           </div>
-
-          {/* Race name */}
-          <h1 className="wp-race-name">{race.name}</h1>
-          <div className="wp-race-circuit">{race.circuit}</div>
-          <div className="wp-race-meta">
-            <span>{race.country}</span>
-            <span>·</span>
-            <span>Round {race.round}</span>
-            <span>·</span>
-            <span>{race.season}</span>
-          </div>
-          <div className="wp-race-date">
-            {new Date(race.race_start).toLocaleDateString('en-GB', {
-              weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
-            })}
-          </div>
-
-          {/* Attending */}
-          <div className="wp-sidebar-section">
-            <div className="wp-sidebar-section-label">Attending</div>
-            {attendees.length > 0
-              ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <AvatarStack attendees={attendees} max={5} />
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-muted)', letterSpacing: '0.05em' }}>
-                    {attendees.length}
-                  </span>
-                </div>
-              )
-              : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-muted)' }}>No one yet</span>
-            }
-            {user && (
-              <button
-                className={`wp-attend-btn${isAttending ? ' wp-attend-btn-on' : ''}`}
-                onClick={toggleAttending}
-                disabled={togglingAttend}
-              >
-                {isAttending ? "I'll be there ✓" : "I'll be there"}
-              </button>
-            )}
-          </div>
-
-          {/* Room tabs */}
+        </div>
+        <div className="wp-strip-right">
           {chatAvailable && (
-            <div className="wp-sidebar-section">
-              <div className="wp-sidebar-section-label">Chat room</div>
-              <div className="wp-room-tabs">
-                <button
-                  className={`wp-room-tab${room === 'global' ? ' active' : ''}`}
-                  onClick={() => setRoom('global')}
-                >
-                  Global Chat
+            <div className="wp-room-tabs">
+              <button className={`wp-room-tab${room === 'global' ? ' active' : ''}`} onClick={() => setRoom('global')}>
+                Global
+              </button>
+              {profile?.team_id && (
+                <button className={`wp-room-tab${room === 'team' ? ' active' : ''}`} onClick={() => setRoom('team')}>
+                  <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: getTeamColor(profile.team_id!), marginRight: 6, flexShrink: 0 }} />
+                  Team
                 </button>
-                {profile?.team_id && (
+              )}
+            </div>
+          )}
+          {user && !chatReadOnly && (
+            <button
+              className={`wp-attend-btn${isAttending ? ' wp-attend-btn-on' : ''}`}
+              onClick={toggleAttending}
+              disabled={togglingAttend}
+            >
+              {isAttending ? "Joining ✓" : "I'll join the party"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Main content ── */}
+      <div className="wp-main">
+
+        {/* UPCOMING phase */}
+        {status === 'upcoming' && (
+          <div className="wp-upcoming">
+            {/* Hero */}
+            <div className="wp-hero">
+              <div className="wp-hero-kicker">Round {race.round} · {race.season} · {race.country}</div>
+              <h1 className="wp-hero-title">{race.name}</h1>
+              <div className="wp-hero-sub">{COUNTRY_FLAGS[race.country] ?? ''} {race.circuit}</div>
+              <div className="wp-hero-date">
+                {new Date(race.race_start).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {' · '}
+                {new Date(race.race_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+
+            {/* Body: countdown + RSVP */}
+            <div className="wp-upcoming-body">
+              {/* Countdown */}
+              <div className="wp-upcoming-cd">
+                <div className="wp-cd-label">🏎️ Party Opens In</div>
+                <div className="wp-cd-blocks">
+                  {cdDays > 0 && (
+                    <div className="wp-cd-block">
+                      <span className="wp-cd-num">{String(cdDays).padStart(2, '0')}</span>
+                      <span className="wp-cd-unit">days</span>
+                    </div>
+                  )}
+                  <div className="wp-cd-block">
+                    <span className="wp-cd-num">{String(cdHours).padStart(2, '0')}</span>
+                    <span className="wp-cd-unit">hrs</span>
+                  </div>
+                  <div className="wp-cd-block">
+                    <span className="wp-cd-num">{String(cdMins).padStart(2, '0')}</span>
+                    <span className="wp-cd-unit">min</span>
+                  </div>
+                  <div className="wp-cd-block">
+                    <span className="wp-cd-num">{String(cdSecs).padStart(2, '0')}</span>
+                    <span className="wp-cd-unit">sec</span>
+                  </div>
+                </div>
+                <p className="wp-cd-sub">
+                  The watch party opens 1 hour before lights out.<br/>Come back for predictions and live chat.
+                </p>
+                {isAdmin && (
+                  <div className="wp-admin-bar">
+                    <span className="wp-admin-label">ADMIN</span>
+                    <button className="wp-admin-btn" onClick={forceOpenParty}>Force Open (Pre-Race)</button>
+                  </div>
+                )}
+              </div>
+
+              {/* RSVP */}
+              <div className="wp-upcoming-rsvp">
+                <div className="wp-who-label">Who's Going 💃🏻</div>
+                {attendees.length > 0 ? (
+                  <>
+                    <div className="wp-who-avatars">
+                      {attendees.slice(0, 8).map(a => (
+                        <div key={a.user_id} className="wp-who-avatar" title={a.profiles?.username ?? '?'}>
+                          {a.profiles?.avatar_url
+                            ? <img src={a.profiles.avatar_url} alt="" />
+                            : (a.profiles?.username ?? '?')[0].toUpperCase()
+                          }
+                        </div>
+                      ))}
+                    </div>
+                    <div className="wp-who-count">
+                      {attendees.length === 1 ? '1 fan plans to attend' : `${attendees.length} fans plan to attend`}
+                    </div>
+                    {attendees.length > 8 && <div className="wp-who-more">+{attendees.length - 8} others</div>}
+                  </>
+                ) : (
+                  <div className="wp-who-empty">No one yet — be the first! 🥂</div>
+                )}
+                {user ? (
                   <button
-                    className={`wp-room-tab${room === 'team' ? ' active' : ''}`}
-                    onClick={() => setRoom('team')}
+                    className={`wp-rsvp-btn${isAttending ? ' on' : ''}`}
+                    onClick={toggleAttending}
+                    disabled={togglingAttend}
                   >
-                    <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: getTeamColor(profile.team_id!), marginRight: 7, flexShrink: 0 }} />
-                    Team Chat
+                    {isAttending ? "I'll join the party ✓" : "I'll join the party"}
                   </button>
+                ) : (
+                  <Link to={`/login?next=${encodeURIComponent(window.location.pathname)}`} className="wp-rsvp-btn">
+                    Sign in to join
+                  </Link>
                 )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* ── Right main area ── */}
-        <div className="wp-chat-area">
-
-          {/* UPCOMING phase */}
-          {status === 'upcoming' && (
-            <div className="wp-phase-upcoming">
-              {/* Race hero banner */}
-              <div className="wp-race-hero">
-                <div className="wp-race-hero-round">Round {race.round} · {race.season}</div>
-                <h2 className="wp-race-hero-name">{race.name}</h2>
-                <div className="wp-race-hero-circuit">{race.circuit} · {race.country}</div>
-                <div className="wp-race-hero-date">
-                  {new Date(race.race_start).toLocaleDateString('en-GB', {
-                    weekday: 'long', day: 'numeric', month: 'long',
-                  })} · {new Date(race.race_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
+        {/* PRE-RACE phase */}
+        {status === 'pre-race' && (
+          <div className="wp-live-layout">
+            {isAdmin && (
+              <div className="wp-admin-bar wp-admin-bar-top">
+                <span className="wp-admin-label">ADMIN</span>
+                <button className="wp-admin-btn wp-admin-btn-close" onClick={forceCloseParty}>Close Party</button>
               </div>
-
-              {/* Two-column: countdown + attending */}
-              <div className="wp-upcoming-body">
-                <div className="wp-upcoming-left">
-                  <div className="wp-countdown">
-                    <div className="wp-countdown-label">Party Opens In</div>
-                    <div className="wp-countdown-blocks">
-                      {cdDays > 0 && (
-                        <div className="wp-cd-block">
-                          <span className="wp-cd-num">{String(cdDays).padStart(2, '0')}</span>
-                          <span className="wp-cd-unit">days</span>
-                        </div>
-                      )}
-                      <div className="wp-cd-block">
-                        <span className="wp-cd-num">{String(cdHours).padStart(2, '0')}</span>
-                        <span className="wp-cd-unit">hrs</span>
+            )}
+            {/* Predictions panel */}
+            <div className="wp-pred-panel">
+              <div className="wp-pred-panel-head">
+                <div className="pred-section-kicker">Pre-Race</div>
+                <h3 className="pred-section-title">Your <em>Grid</em></h3>
+                {predSaved && <div className="pred-saved-toast">Locked ✓</div>}
+                {existingEntry && !predSaved && <div className="pred-existing-note">Saved · Update anytime</div>}
+              </div>
+              <div className="pred-picks">
+                {[
+                  { key: 'p1' as const, label: 'P1', icon: '🏆' },
+                  { key: 'p2' as const, label: 'P2', icon: '🥈' },
+                  { key: 'p3' as const, label: 'P3', icon: '🥉' },
+                  { key: 'fastest_lap' as const, label: 'FL', icon: '⚡' },
+                  { key: 'dnf' as const, label: 'DNF', icon: '💔' },
+                ].map(({ key, label, icon }) => {
+                  const exclude = key === 'p1' ? [predictions.p2, predictions.p3]
+                    : key === 'p2' ? [predictions.p1, predictions.p3]
+                    : key === 'p3' ? [predictions.p1, predictions.p2]
+                    : []
+                  const selectedDriver = DRIVERS.find(d => d.id === predictions[key])
+                  return (
+                    <div key={key} className="pred-pick-row">
+                      <div className="pred-pick-position">
+                        <span className="pred-pick-icon">{icon}</span>
+                        <div className="pred-pick-label">{label}</div>
                       </div>
-                      <div className="wp-cd-block">
-                        <span className="wp-cd-num">{String(cdMins).padStart(2, '0')}</span>
-                        <span className="wp-cd-unit">min</span>
-                      </div>
-                      <div className="wp-cd-block">
-                        <span className="wp-cd-num">{String(cdSecs).padStart(2, '0')}</span>
-                        <span className="wp-cd-unit">sec</span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="wp-phase-sub">
-                    The watch party opens 1 hour before lights out. Come back for predictions and live chat.
-                  </p>
-                  {isAdmin && (
-                    <div className="wp-admin-bar">
-                      <span className="wp-admin-label">ADMIN</span>
-                      <button className="wp-admin-btn" onClick={forceOpenParty}>
-                        Force Open (Pre-Race)
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="wp-upcoming-right">
-                  <div className="wp-who-label">Who's Going</div>
-                  {attendees.length > 0 ? (
-                    <>
-                      <div className="wp-who-avatars">
-                        {attendees.slice(0, 6).map(a => (
-                          <div key={a.user_id} className="wp-who-avatar" title={a.profiles?.username ?? '?'}>
-                            {a.profiles?.avatar_url
-                              ? <img src={a.profiles.avatar_url} alt="" />
-                              : (a.profiles?.username ?? '?')[0].toUpperCase()
-                            }
+                      <div className="pred-pick-select-wrap">
+                        {selectedDriver && (
+                          <div className="pred-pick-preview" style={{ borderColor: getTeamColor(selectedDriver.team) }}>
+                            <div className="pred-pick-photo">
+                              {selectedDriver.photo ? <img src={selectedDriver.photo} alt="" /> : selectedDriver.name[0]}
+                            </div>
                           </div>
-                        ))}
+                        )}
+                        <select
+                          className="pred-select-new"
+                          value={predictions[key]}
+                          onChange={e => setPredictions(p => ({ ...p, [key]: e.target.value }))}
+                          disabled={!user}
+                        >
+                          <option value="">— pick —</option>
+                          {DRIVERS.filter(d => !exclude.filter(x => x !== predictions[key]).includes(d.id)).map(d => (
+                            <option key={d.id} value={d.id}>#{d.number} {d.name.split(' ').slice(-1)[0]}</option>
+                          ))}
+                        </select>
                       </div>
-                      <div className="wp-who-count">
-                        {attendees.length === 1
-                          ? '1 fan plans to attend'
-                          : `${attendees.length} fans plan to attend`
-                        }
-                      </div>
-                      {attendees.length > 6 && (
-                        <div className="wp-who-more">+{attendees.length - 6} others</div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="wp-who-empty">No one yet — be the first!</div>
-                  )}
-                  {user ? (
-                    <button
-                      className={`wp-big-attend-btn${isAttending ? ' wp-big-attend-btn-on' : ''}`}
-                      onClick={toggleAttending}
-                      disabled={togglingAttend}
-                    >
-                      {isAttending ? "I'll be there ✓" : "I'll be there"}
-                    </button>
-                  ) : (
-                    <Link to="/login" className="wp-big-attend-btn">
-                      Sign in to join
-                    </Link>
-                  )}
-                </div>
+                    </div>
+                  )
+                })}
               </div>
+              <button className="pred-lock-btn" onClick={savePredictions} disabled={savingPred || !user}>
+                {savingPred ? 'Saving…' : existingEntry ? 'Update' : 'Lock In →'}
+              </button>
+              {!user && <p className="pred-signin-note"><Link to="/login">Sign in</Link> to predict</p>}
             </div>
-          )}
-
-          {/* PRE-RACE phase */}
-          {status === 'pre-race' && (
-            <>
-              {isAdmin && (
-                <div className="wp-admin-bar" style={{ margin: '0', borderBottom: '1px solid var(--color-border)', borderRadius: 0 }}>
-                  <span className="wp-admin-label">ADMIN</span>
-                  <button className="wp-admin-btn wp-admin-btn-close" onClick={forceCloseParty}>
-                    Close Party
-                  </button>
-                </div>
-              )}
-              <div className="wp-pre-race-grid">
-                {/* Left: predictions panel */}
-                <div className="wp-pred-panel">
-                  <div className="wp-pred-panel-head">
-                    <div className="pred-section-kicker">Pre-Race</div>
-                    <h3 className="pred-section-title">Your <em>Grid</em></h3>
-                    {predSaved && <div className="pred-saved-toast">Locked ✓</div>}
-                    {existingEntry && !predSaved && <div className="pred-existing-note">Saved · Update anytime</div>}
-                  </div>
-
-                  <div className="pred-picks">
-                    {[
-                      { key: 'p1' as const, label: 'P1', sublabel: 'Winner', icon: '🏆' },
-                      { key: 'p2' as const, label: 'P2', sublabel: '2nd', icon: '🥈' },
-                      { key: 'p3' as const, label: 'P3', sublabel: '3rd', icon: '🥉' },
-                      { key: 'fastest_lap' as const, label: 'FL', sublabel: 'Fastest', icon: '⚡' },
-                      { key: 'dnf' as const, label: 'DNF', sublabel: 'First out', icon: '💔' },
-                    ].map(({ key, label, sublabel, icon }) => {
-                      const exclude = key === 'p1' ? [predictions.p2, predictions.p3]
-                        : key === 'p2' ? [predictions.p1, predictions.p3]
-                        : key === 'p3' ? [predictions.p1, predictions.p2]
-                        : []
-                      const selectedDriver = DRIVERS.find(d => d.id === predictions[key])
-                      return (
-                        <div key={key} className="pred-pick-row">
-                          <div className="pred-pick-position">
-                            <span className="pred-pick-icon">{icon}</span>
-                            <div className="pred-pick-label">{label}</div>
-                          </div>
-                          <div className="pred-pick-select-wrap">
-                            {selectedDriver && (
-                              <div className="pred-pick-preview" style={{ borderColor: getTeamColor(selectedDriver.team) }}>
-                                <div className="pred-pick-photo">
-                                  {selectedDriver.photo
-                                    ? <img src={selectedDriver.photo} alt="" />
-                                    : selectedDriver.name[0]
-                                  }
-                                </div>
-                              </div>
-                            )}
-                            <select
-                              className="pred-select-new"
-                              value={predictions[key]}
-                              onChange={e => setPredictions(p => ({ ...p, [key]: e.target.value }))}
-                              disabled={!user}
-                            >
-                              <option value="">— pick —</option>
-                              {DRIVERS.filter(d => !exclude.filter(x => x !== predictions[key]).includes(d.id)).map(d => (
-                                <option key={d.id} value={d.id}>#{d.number} {d.name.split(' ').slice(-1)[0]}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <button
-                    className="pred-lock-btn"
-                    onClick={savePredictions}
-                    disabled={savingPred || !user}
-                  >
-                    {savingPred ? 'Saving…' : existingEntry ? 'Update' : 'Lock In →'}
-                  </button>
-                  {!user && (
-                    <p className="pred-signin-note">
-                      <Link to="/login">Sign in</Link> to predict
-                    </p>
-                  )}
-                </div>
-
-                {/* Right: live chat */}
-                <div className="wp-pre-race-chat">
-                  <div className="wp-chat-header">
-                    <span className="wp-chat-header-label">Pre-Race Chat</span>
-                  </div>
-                  {renderChat()}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* LIVE phase */}
-          {status === 'live' && (
-            <>
-              <div className="wp-chat-header wp-chat-header-live">
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="fg-live-dot" />
-                  <span className="wp-chat-header-label" style={{ color: 'var(--color-red)' }}>
-                    {race.name} — {room === 'global' ? 'Global' : 'Team'}
-                  </span>
-                </span>
-              </div>
-              {user && (
-                <div className="wp-reaction-bar">
-                  {QUICK_REACTIONS.map(emoji => (
-                    <button
-                      key={emoji}
-                      className="wp-reaction-btn"
-                      onClick={() => sendReaction(emoji)}
-                      title={`React with ${emoji}`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {renderChat()}
-            </>
-          )}
-
-          {/* POST-RACE phase */}
-          {status === 'post-race' && (
-            <>
+            {/* Chat */}
+            <div className="wp-chat-col">
               <div className="wp-chat-header">
-                <span className="wp-chat-header-label">
-                  Post-Race Vibes — {room === 'global' ? 'Global' : 'Team'}
-                </span>
+                <span className="wp-chat-header-label">Pre-Race Chat</span>
               </div>
               {renderChat()}
-            </>
-          )}
+            </div>
+          </div>
+        )}
 
-          {/* FINISHED phase */}
-          {status === 'finished' && (
-            <>
-              <div className="wp-chat-header">
-                <span className="wp-chat-header-label">
-                  Archive — {race.name} · {room === 'global' ? 'Global' : 'Team'}
-                </span>
+        {/* LIVE phase */}
+        {status === 'live' && (
+          <div className="wp-live-layout wp-live-layout-chat">
+            {user && (
+              <div className="wp-reaction-bar">
+                {QUICK_REACTIONS.map(emoji => (
+                  <button key={emoji} className="wp-reaction-btn" onClick={() => sendReaction(emoji)}>{emoji}</button>
+                ))}
               </div>
+            )}
+            <div className="wp-chat-header wp-chat-header-live">
+              <span className="fg-live-dot" style={{ marginRight: 8 }} />
+              <span className="wp-chat-header-label" style={{ color: 'var(--color-red)' }}>
+                {race.name} — {room === 'global' ? 'Global' : 'Team'} Chat
+              </span>
+            </div>
+            {renderChat()}
+          </div>
+        )}
 
-              {existingEntry && (
-                <div className="wp-archive-pred">
-                  <div className="fg-kicker" style={{ marginBottom: 8 }}>Your Predictions</div>
-                  <div className="wp-pred-archive-grid">
-                    {(['p1', 'p2', 'p3', 'fastest_lap', 'dnf'] as const).map(key => {
-                      const labels: Record<string, string> = { p1: 'P1', p2: 'P2', p3: 'P3', fastest_lap: 'Fastest Lap', dnf: 'DNF' }
-                      const driverId = (existingEntry as Record<string, string>)[`pred_${key}`]
-                      const driver = DRIVERS.find(d => d.id === driverId)
-                      return (
-                        <div key={key} className="wp-pred-archive-item">
-                          <span className="wp-pred-archive-label">{labels[key]}</span>
-                          <span className="wp-pred-archive-val">
-                            {driver ? `#${driver.number} ${driver.name}` : '—'}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
+        {/* POST-RACE phase */}
+        {status === 'post-race' && (
+          <div className="wp-live-layout wp-live-layout-chat">
+            <div className="wp-chat-header">
+              <span className="wp-chat-header-label">Post-Race Vibes 🥂 — {room === 'global' ? 'Global' : 'Team'}</span>
+            </div>
+            {renderChat()}
+          </div>
+        )}
+
+        {/* FINISHED phase */}
+        {status === 'finished' && (
+          <div className="wp-live-layout wp-live-layout-chat">
+            <div className="wp-chat-header">
+              <span className="wp-chat-header-label">Archive — {race.name}</span>
+            </div>
+            {existingEntry && (
+              <div className="wp-archive-pred">
+                <div className="fg-kicker" style={{ marginBottom: 8 }}>Your Predictions</div>
+                <div className="wp-pred-archive-grid">
+                  {(['p1', 'p2', 'p3', 'fastest_lap', 'dnf'] as const).map(key => {
+                    const labels: Record<string, string> = { p1: 'P1', p2: 'P2', p3: 'P3', fastest_lap: 'Fastest Lap', dnf: 'DNF' }
+                    const driverId = (existingEntry as Record<string, string>)[`pred_${key}`]
+                    const driver = DRIVERS.find(d => d.id === driverId)
+                    return (
+                      <div key={key} className="wp-pred-archive-item">
+                        <span className="wp-pred-archive-label">{labels[key]}</span>
+                        <span className="wp-pred-archive-val">{driver ? `#${driver.number} ${driver.name}` : '—'}</span>
+                      </div>
+                    )
+                  })}
                 </div>
-              )}
-
-              {renderChat(true)}
-            </>
-          )}
-
-        </div>
+              </div>
+            )}
+            {renderChat(true)}
+          </div>
+        )}
       </div>
 
       <style>{`
         /* ── Shell ── */
         .wp-shell { min-height: 100dvh; display: flex; flex-direction: column; background: var(--color-paper); }
-        .wp-layout {
-          flex: 1;
-          display: grid;
-          grid-template-columns: 280px 1fr;
-          height: calc(100dvh - 56px);
+
+        /* ── Race strip ── */
+        .wp-strip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 0 24px;
+          height: 52px;
+          border-bottom: 2px solid var(--color-ink);
+          background: var(--color-paper);
+          flex-shrink: 0;
+          position: sticky;
+          top: 56px;
+          z-index: 10;
+        }
+        .wp-strip-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
           overflow: hidden;
         }
-
-        /* ── Sidebar ── */
-        .wp-sidebar {
-          padding: 24px 20px;
-          border-right: 2px solid var(--color-ink);
-          overflow-y: auto;
+        .wp-strip-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+        .wp-strip-divider {
+          width: 1px;
+          height: 20px;
+          background: var(--color-border);
+          flex-shrink: 0;
+        }
+        .wp-strip-info {
           display: flex;
           flex-direction: column;
-          gap: 0;
+          gap: 1px;
+          min-width: 0;
+          overflow: hidden;
+        }
+        .wp-strip-name {
+          font-family: var(--font-display);
+          font-size: 14px;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          color: var(--color-ink);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .wp-strip-meta {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          color: var(--color-muted);
+          letter-spacing: 0.06em;
+          white-space: nowrap;
         }
         .wp-back {
           font-family: var(--font-mono);
@@ -759,90 +766,18 @@ export default function WatchParty() {
           text-transform: uppercase;
           color: var(--color-muted);
           text-decoration: none;
-          margin-bottom: 20px;
-          display: block;
+          white-space: nowrap;
+          flex-shrink: 0;
           transition: color 0.12s ease;
         }
         .wp-back:hover { color: var(--color-ink); }
-        .wp-sidebar-status { margin-bottom: 10px; }
-        .wp-race-name {
-          font-family: var(--font-display);
-          font-size: 22px;
-          font-weight: 900;
-          letter-spacing: -0.03em;
-          color: var(--color-ink);
-          line-height: 1.1;
-          margin-bottom: 8px;
-        }
-        .wp-race-circuit {
-          font-family: var(--font-sans);
-          font-size: 13px;
-          color: var(--color-ink);
-          margin-bottom: 4px;
-        }
-        .wp-race-meta {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          color: var(--color-muted);
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          display: flex;
-          gap: 5px;
-          margin-bottom: 4px;
-        }
-        .wp-race-date {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--color-muted);
-          letter-spacing: 0.04em;
-          margin-bottom: 24px;
-        }
-        .wp-sidebar-section {
-          border-top: 1px solid var(--color-border);
-          padding-top: 16px;
-          margin-bottom: 16px;
-        }
-        .wp-sidebar-section-label {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: var(--color-muted);
-          margin-bottom: 10px;
-        }
-        .wp-attend-btn {
-          margin-top: 10px;
-          width: 100%;
-          padding: 9px 14px;
-          font-family: var(--font-mono);
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          border: 1px solid var(--color-ink);
-          border-radius: var(--radius);
-          background: transparent;
-          color: var(--color-ink);
-          cursor: pointer;
-          transition: all 0.12s ease;
-        }
-        .wp-attend-btn:hover { background: var(--color-ink); color: #fff; }
-        .wp-attend-btn.wp-attend-btn-on {
-          background: var(--color-red);
-          border-color: var(--color-red);
-          color: #fff;
-        }
-        .wp-attend-btn.wp-attend-btn-on:hover { background: var(--color-red-dark); border-color: var(--color-red-dark); }
-        .wp-attend-btn:disabled { opacity: 0.5; cursor: default; }
 
-        /* Room tabs */
-        .wp-room-tabs { display: flex; flex-direction: column; gap: 4px; }
+        /* Room tabs in strip */
+        .wp-room-tabs { display: flex; gap: 4px; }
         .wp-room-tab {
-          padding: 9px 12px;
-          text-align: left;
+          padding: 5px 12px;
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
           letter-spacing: 0.1em;
           text-transform: uppercase;
@@ -856,11 +791,27 @@ export default function WatchParty() {
           transition: all 0.1s ease;
         }
         .wp-room-tab:hover { background: var(--color-paper-2); color: var(--color-ink); }
-        .wp-room-tab.active {
-          background: var(--color-ink);
-          color: #fff;
-          border-color: var(--color-ink);
+        .wp-room-tab.active { background: var(--color-ink); color: #fff; border-color: var(--color-ink); }
+
+        /* Attend btn in strip */
+        .wp-attend-btn {
+          padding: 6px 14px;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          border: 1px solid var(--color-ink);
+          border-radius: var(--radius);
+          background: transparent;
+          color: var(--color-ink);
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.12s ease;
         }
+        .wp-attend-btn:hover { background: var(--color-ink); color: #fff; }
+        .wp-attend-btn.wp-attend-btn-on { background: var(--color-red); border-color: var(--color-red); color: #fff; }
+        .wp-attend-btn:disabled { opacity: 0.5; cursor: default; }
 
         /* ── Status badges ── */
         .wp-status-badge {
@@ -873,6 +824,7 @@ export default function WatchParty() {
           text-transform: uppercase;
           padding: 3px 8px;
           border-radius: var(--radius);
+          flex-shrink: 0;
         }
         .wp-status-live { background: var(--color-red); color: #fff; }
         .wp-status-prerace { background: var(--color-ink); color: #fff; }
@@ -880,14 +832,190 @@ export default function WatchParty() {
         .wp-status-postrace { background: var(--color-paper-2); color: var(--color-ink); border: 1px solid var(--color-border); }
         .wp-status-finished { color: #bbb; border: 1px solid #ddd; }
 
-        /* ── Main chat area ── */
-        .wp-chat-area {
+        /* ── Main ── */
+        .wp-main {
+          flex: 1;
           display: flex;
           flex-direction: column;
+          height: calc(100dvh - 56px - 52px);
           overflow: hidden;
         }
+
+        /* ── Upcoming ── */
+        .wp-upcoming { flex: 1; overflow-y: auto; }
+        .wp-hero {
+          background: var(--color-ink);
+          padding: 56px 48px 48px;
+          border-bottom: 3px solid var(--color-red);
+        }
+        .wp-hero-kicker {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.28em;
+          text-transform: uppercase;
+          color: var(--color-red);
+          margin-bottom: 12px;
+        }
+        .wp-hero-title {
+          font-family: var(--font-display);
+          font-size: clamp(36px, 5vw, 72px);
+          font-weight: 900;
+          letter-spacing: -0.03em;
+          line-height: 1;
+          color: #fff;
+          margin-bottom: 12px;
+        }
+        .wp-hero-sub {
+          font-family: var(--font-sans);
+          font-size: 16px;
+          color: rgba(255,255,255,0.6);
+          margin-bottom: 6px;
+        }
+        .wp-hero-date {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          color: rgba(255,255,255,0.4);
+          letter-spacing: 0.07em;
+        }
+
+        /* Upcoming body */
+        .wp-upcoming-body {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          min-height: 340px;
+        }
+        .wp-upcoming-cd {
+          padding: 40px 48px;
+          border-right: 1px solid var(--color-border);
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        .wp-upcoming-rsvp {
+          padding: 40px 36px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .wp-cd-label {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--color-red);
+        }
+        .wp-cd-blocks {
+          display: flex;
+          gap: 20px;
+          align-items: flex-end;
+        }
+        .wp-cd-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+        }
+        .wp-cd-num {
+          font-family: var(--font-mono);
+          font-size: clamp(48px, 6vw, 80px);
+          font-weight: 700;
+          color: var(--color-ink);
+          line-height: 1;
+          letter-spacing: -0.03em;
+        }
+        .wp-cd-unit {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+        }
+        .wp-cd-sub {
+          font-family: var(--font-sans);
+          font-size: 14px;
+          color: var(--color-muted);
+          line-height: 1.7;
+          max-width: 400px;
+        }
+
+        /* Who's going */
+        .wp-who-label {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+        }
+        .wp-who-avatars {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .wp-who-avatar {
+          width: 38px; height: 38px;
+          border-radius: 50%;
+          background: #111; color: #fff;
+          font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
+          overflow: hidden;
+          border: 2px solid var(--color-paper);
+          box-shadow: 0 0 0 1.5px var(--color-border);
+        }
+        .wp-who-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .wp-who-count { font-family: var(--font-mono); font-size: 10px; color: var(--color-muted); letter-spacing: 0.04em; }
+        .wp-who-more { font-family: var(--font-mono); font-size: 9px; color: var(--color-muted); }
+        .wp-who-empty { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); font-style: italic; }
+        .wp-rsvp-btn {
+          display: block;
+          padding: 12px 16px;
+          text-align: center;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          border: 2px solid var(--color-ink);
+          border-radius: var(--radius);
+          background: transparent;
+          color: var(--color-ink);
+          cursor: pointer;
+          text-decoration: none;
+          transition: all 0.14s ease;
+          margin-top: auto;
+        }
+        .wp-rsvp-btn:hover { background: var(--color-ink); color: #fff; }
+        .wp-rsvp-btn.on { background: var(--color-red); border-color: var(--color-red); color: #fff; }
+        .wp-rsvp-btn:disabled { opacity: 0.5; cursor: default; }
+
+        /* ── Live/Pre-race/Post-race layout ── */
+        .wp-live-layout {
+          flex: 1;
+          display: grid;
+          grid-template-columns: 280px 1fr;
+          overflow: hidden;
+        }
+        .wp-live-layout-chat {
+          grid-template-columns: 1fr;
+          flex-direction: column;
+          display: flex;
+        }
+        .wp-pred-panel {
+          border-right: 1px solid var(--color-border);
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          padding: 20px 16px 0;
+        }
+        .wp-pred-panel-head { margin-bottom: 16px; }
+        .wp-chat-col { display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Chat header */
         .wp-chat-header {
-          padding: 14px 20px;
+          padding: 12px 20px;
           border-bottom: 1px solid var(--color-border);
           flex-shrink: 0;
           display: flex;
@@ -912,533 +1040,155 @@ export default function WatchParty() {
           flex-shrink: 0;
         }
         .wp-reaction-btn {
-          font-size: 18px;
-          padding: 4px 8px;
+          font-size: 18px; padding: 4px 8px;
           border: 1px solid var(--color-border);
           border-radius: var(--radius);
-          background: transparent;
-          cursor: pointer;
-          transition: background 0.1s ease;
-          line-height: 1;
+          background: transparent; cursor: pointer;
+          transition: background 0.1s ease; line-height: 1;
         }
         .wp-reaction-btn:hover { background: var(--color-paper-2); }
-
-        /* ── Upcoming phase ── */
-        .wp-phase-upcoming {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          overflow-y: auto;
-        }
-
-        /* Race hero banner */
-        .wp-race-hero {
-          background: var(--color-ink);
-          color: #fff;
-          padding: 40px 40px 36px;
-          border-bottom: 3px solid var(--color-red);
-        }
-        .wp-race-hero-round {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          color: var(--color-red);
-          margin-bottom: 10px;
-        }
-        .wp-race-hero-name {
-          font-family: var(--font-display);
-          font-size: clamp(28px, 3.5vw, 52px);
-          font-weight: 900;
-          letter-spacing: -0.03em;
-          line-height: 1.0;
-          color: #fff;
-          margin-bottom: 10px;
-        }
-        .wp-race-hero-circuit {
-          font-family: var(--font-sans);
-          font-size: 14px;
-          color: rgba(255,255,255,0.6);
-          margin-bottom: 6px;
-        }
-        .wp-race-hero-date {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          color: rgba(255,255,255,0.5);
-          letter-spacing: 0.06em;
-        }
-
-        /* Two-column body */
-        .wp-upcoming-body {
-          display: grid;
-          grid-template-columns: 1fr 280px;
-          gap: 0;
-          flex: 1;
-          min-height: 0;
-        }
-        .wp-upcoming-left {
-          padding: 36px 40px;
-          border-right: 1px solid var(--color-border);
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-        .wp-upcoming-right {
-          padding: 32px 28px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .wp-phase-sub {
-          font-family: var(--font-sans);
-          font-size: 14px;
-          color: var(--color-muted);
-          line-height: 1.65;
-          max-width: 380px;
-        }
-
-        /* Who's going */
-        .wp-who-label {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          color: var(--color-muted);
-          margin-bottom: 4px;
-        }
-        .wp-who-avatars {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          margin-bottom: 4px;
-        }
-        .wp-who-avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: #111;
-          color: #fff;
-          font-family: var(--font-mono);
-          font-size: 13px;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-          border: 2px solid var(--color-paper);
-          box-shadow: 0 0 0 1.5px var(--color-border);
-        }
-        .wp-who-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .wp-who-count {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--color-muted);
-          letter-spacing: 0.04em;
-        }
-        .wp-who-more {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          color: var(--color-muted);
-          letter-spacing: 0.04em;
-        }
-        .wp-who-empty {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--color-muted);
-          letter-spacing: 0.04em;
-          font-style: italic;
-        }
-        .wp-big-attend-btn {
-          display: block;
-          width: 100%;
-          padding: 12px 16px;
-          text-align: center;
-          font-family: var(--font-mono);
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          border: 2px solid var(--color-ink);
-          border-radius: var(--radius);
-          background: transparent;
-          color: var(--color-ink);
-          cursor: pointer;
-          text-decoration: none;
-          transition: all 0.14s ease;
-          margin-top: auto;
-        }
-        .wp-big-attend-btn:hover { background: var(--color-ink); color: #fff; }
-        .wp-big-attend-btn.wp-big-attend-btn-on {
-          background: var(--color-red);
-          border-color: var(--color-red);
-          color: #fff;
-        }
-        .wp-big-attend-btn.wp-big-attend-btn-on:hover { background: #c00; border-color: #c00; }
-        .wp-big-attend-btn:disabled { opacity: 0.5; cursor: default; }
-
-        /* Countdown */
-        .wp-countdown {
-          border: 2px solid var(--color-ink);
-          border-radius: var(--radius);
-          padding: 28px 32px;
-          margin-bottom: 24px;
-        }
-        .wp-countdown-label {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          color: var(--color-red);
-          margin-bottom: 20px;
-          display: block;
-        }
-        .wp-countdown-blocks {
-          display: flex;
-          gap: 16px;
-          align-items: flex-end;
-          margin-bottom: 20px;
-        }
-        .wp-cd-block {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-          min-width: 52px;
-        }
-        .wp-cd-num {
-          font-family: var(--font-mono);
-          font-size: clamp(36px, 5vw, 60px);
-          font-weight: 700;
-          color: var(--color-ink);
-          line-height: 1;
-          letter-spacing: -0.02em;
-        }
-        .wp-cd-unit {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: var(--color-muted);
-        }
-        .wp-cd-raceday {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--color-muted);
-          letter-spacing: 0.04em;
-        }
 
         /* Admin bar */
         .wp-admin-bar {
           display: flex;
           align-items: center;
           gap: 12px;
-          margin-top: 16px;
-          padding: 10px 14px;
+          padding: 8px 14px;
           border: 1px dashed #ccc;
           border-radius: var(--radius);
           background: #fffbf0;
         }
+        .wp-admin-bar-top {
+          margin: 0;
+          border-radius: 0;
+          border: none;
+          border-bottom: 1px dashed #ddd;
+          background: #fffbf0;
+          grid-column: 1 / -1;
+        }
         .wp-admin-label {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.16em;
-          color: #888;
-          text-transform: uppercase;
-          white-space: nowrap;
+          font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+          letter-spacing: 0.16em; color: #888; text-transform: uppercase;
         }
         .wp-admin-btn {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          padding: 6px 14px;
-          background: var(--color-ink);
-          color: #fff;
-          border: none;
-          border-radius: var(--radius);
-          cursor: pointer;
-          transition: background 0.15s ease;
+          font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          padding: 5px 12px;
+          background: var(--color-ink); color: #fff;
+          border: none; border-radius: var(--radius);
+          cursor: pointer; transition: background 0.15s ease;
         }
         .wp-admin-btn:hover { background: #333; }
         .wp-admin-btn-close { background: #888; }
         .wp-admin-btn-close:hover { background: #555; }
 
-        /* Pre-race two-col grid */
-        .wp-pre-race-grid {
-          flex: 1;
-          display: grid;
-          grid-template-columns: 260px 1fr;
-          overflow: hidden;
-        }
-        .wp-pred-panel {
-          border-right: 1px solid var(--color-border);
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          padding: 20px 16px 16px;
-          gap: 0;
-        }
-        .wp-pred-panel-head {
-          margin-bottom: 16px;
-        }
-        .wp-pre-race-chat {
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-
+        /* Predictions */
         .pred-section-kicker {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.28em;
-          text-transform: uppercase;
-          color: var(--color-red);
-          margin-bottom: 4px;
+          font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+          letter-spacing: 0.28em; text-transform: uppercase; color: var(--color-red); margin-bottom: 4px;
         }
         .pred-section-title {
-          font-family: var(--font-display);
-          font-size: 22px;
-          font-weight: 900;
-          letter-spacing: -0.03em;
-          color: var(--color-ink);
-          margin: 0 0 6px;
-          line-height: 1.1;
+          font-family: var(--font-display); font-size: 20px; font-weight: 900;
+          letter-spacing: -0.03em; color: var(--color-ink); margin: 0 0 6px; line-height: 1.1;
         }
         .pred-section-title em { font-style: italic; color: var(--color-red); }
         .pred-saved-toast {
-          display: inline-flex;
-          background: var(--color-ink);
-          color: #fff;
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          padding: 4px 10px;
-          white-space: nowrap;
+          display: inline-flex; background: var(--color-ink); color: #fff;
+          font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+          letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px;
         }
         .pred-existing-note {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          color: var(--color-muted);
-          letter-spacing: 0.04em;
+          font-family: var(--font-mono); font-size: 9px; color: var(--color-muted); letter-spacing: 0.04em;
         }
         .pred-signin-note {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          color: var(--color-muted);
-          margin-top: 10px;
-          text-align: center;
+          font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); margin-top: 8px; text-align: center;
         }
         .pred-signin-note a { color: var(--color-ink); font-weight: 700; }
-
-        /* Pick rows */
         .pred-picks {
-          display: flex;
-          flex-direction: column;
-          border: 1px solid var(--color-border);
-          overflow: hidden;
-          margin-bottom: 0;
+          display: flex; flex-direction: column;
+          border: 1px solid var(--color-border); overflow: hidden; margin-bottom: 0;
         }
         .pred-pick-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-          padding: 10px 12px;
-          border-bottom: 1px solid var(--color-border);
-          background: var(--color-paper);
-          transition: background 0.1s ease;
+          display: flex; align-items: center; justify-content: space-between; gap: 8px;
+          padding: 9px 12px; border-bottom: 1px solid var(--color-border);
+          background: var(--color-paper); transition: background 0.1s ease;
         }
         .pred-pick-row:last-child { border-bottom: none; }
         .pred-pick-row:hover { background: var(--color-paper-2, #f8f8f8); }
-        .pred-pick-position {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          flex-shrink: 0;
-          min-width: 52px;
-        }
-        .pred-pick-icon {
-          font-size: 14px;
-          line-height: 1;
-          flex-shrink: 0;
-        }
-        .pred-pick-label {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          font-weight: 700;
-          color: var(--color-ink);
-          letter-spacing: 0.04em;
-        }
-        .pred-pick-select-wrap {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          flex: 1;
-          justify-content: flex-end;
-          min-width: 0;
-        }
+        .pred-pick-position { display: flex; align-items: center; gap: 7px; flex-shrink: 0; min-width: 48px; }
+        .pred-pick-icon { font-size: 14px; line-height: 1; flex-shrink: 0; }
+        .pred-pick-label { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--color-ink); }
+        .pred-pick-select-wrap { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: flex-end; min-width: 0; }
         .pred-pick-preview {
-          width: 26px;
-          height: 26px;
-          border-radius: 50%;
-          border: 2px solid;
-          overflow: hidden;
-          background: #111;
-          flex-shrink: 0;
+          width: 24px; height: 24px; border-radius: 50%; border: 2px solid; overflow: hidden;
+          background: #111; flex-shrink: 0;
         }
         .pred-pick-photo {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 700;
-          color: #fff;
+          width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+          font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: #fff;
         }
         .pred-pick-photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
         .pred-select-new {
-          padding: 6px 22px 6px 8px;
-          border: 1px solid var(--color-border);
-          background: var(--color-paper);
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--color-ink);
-          appearance: none;
-          cursor: pointer;
-          outline: none;
+          padding: 5px 20px 5px 7px;
+          border: 1px solid var(--color-border); background: var(--color-paper);
+          font-family: var(--font-mono); font-size: 10px; color: var(--color-ink);
+          appearance: none; cursor: pointer; outline: none;
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888'/%3E%3C/svg%3E");
-          background-repeat: no-repeat;
-          background-position: right 6px center;
-          max-width: 130px;
-          width: 100%;
+          background-repeat: no-repeat; background-position: right 5px center;
+          max-width: 120px; width: 100%;
         }
-        .pred-select-new:focus { border-color: var(--color-ink); outline: none; }
+        .pred-select-new:focus { border-color: var(--color-ink); }
         .pred-select-new:disabled { opacity: 0.4; cursor: default; }
-
         .pred-lock-btn {
-          display: block;
-          width: 100%;
-          padding: 11px;
-          margin-top: 0;
-          font-family: var(--font-mono);
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          background: var(--color-ink);
-          color: #fff;
-          border: none;
-          cursor: pointer;
+          display: block; width: 100%; padding: 10px; margin-top: 0;
+          font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+          letter-spacing: 0.14em; text-transform: uppercase;
+          background: var(--color-ink); color: #fff; border: none; cursor: pointer;
           transition: background 0.14s ease;
         }
         .pred-lock-btn:hover { background: #333; }
         .pred-lock-btn:disabled { opacity: 0.5; cursor: default; }
 
         /* Archive */
-        .wp-archive-pred {
-          padding: 16px 20px;
-          border-bottom: 1px solid var(--color-border);
-          flex-shrink: 0;
-        }
-        .wp-pred-archive-grid {
-          display: flex;
-          gap: 20px;
-          flex-wrap: wrap;
-        }
-        .wp-pred-archive-item {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
+        .wp-archive-pred { padding: 16px 20px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+        .wp-pred-archive-grid { display: flex; gap: 20px; flex-wrap: wrap; }
+        .wp-pred-archive-item { display: flex; flex-direction: column; gap: 2px; }
         .wp-pred-archive-label {
-          font-family: var(--font-mono);
-          font-size: 8px;
-          font-weight: 700;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
-          color: var(--color-muted);
+          font-family: var(--font-mono); font-size: 8px; font-weight: 700;
+          letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-muted);
         }
-        .wp-pred-archive-val {
-          font-family: var(--font-mono);
-          font-size: 11px;
-          color: var(--color-ink);
-          font-weight: 700;
-        }
+        .wp-pred-archive-val { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink); font-weight: 700; }
 
         /* Join notification */
         .fg-chat-join {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 16px;
-          background: var(--color-paper-2, #f8f8f8);
-          border-left: 2px solid var(--color-red);
-          margin: 4px 0;
+          display: flex; align-items: center; gap: 8px; padding: 6px 16px;
+          background: var(--color-paper-2, #f8f8f8); border-left: 2px solid var(--color-red); margin: 4px 0;
         }
-        .fg-chat-avatar-sm {
-          width: 22px !important;
-          height: 22px !important;
-          font-size: 9px !important;
-          flex-shrink: 0;
-        }
-        .fg-chat-join-text {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--color-muted);
-          letter-spacing: 0.04em;
-        }
-        .fg-chat-join-name {
-          font-weight: 700;
-          color: var(--color-ink);
-        }
+        .fg-chat-avatar-sm { width: 22px !important; height: 22px !important; font-size: 9px !important; flex-shrink: 0; }
+        .fg-chat-join-text { font-family: var(--font-mono); font-size: 10px; color: var(--color-muted); letter-spacing: 0.04em; }
+        .fg-chat-join-name { font-weight: 700; color: var(--color-ink); }
 
         /* Chat wrapper */
-        .wp-chat-area-inner {
-          display: flex;
-          flex-direction: column;
-          flex: 1;
-          overflow: hidden;
-        }
+        .wp-chat-area-inner { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
         .wp-chat-readonly .fg-chat-wrap { flex: 1; }
         .fg-chat-wrap { overflow-y: auto; flex: 1; }
 
         /* Mobile */
         @media (max-width: 768px) {
           .wp-upcoming-body { grid-template-columns: 1fr; }
-          .wp-upcoming-left { border-right: none; border-bottom: 1px solid var(--color-border); padding: 24px 20px; }
-          .wp-upcoming-right { padding: 24px 20px; }
-          .wp-pre-race-grid { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-          .wp-pred-panel { border-right: none; border-bottom: 1px solid var(--color-border); max-height: 320px; }
+          .wp-upcoming-cd { border-right: none; border-bottom: 1px solid var(--color-border); padding: 28px 24px; }
+          .wp-upcoming-rsvp { padding: 28px 24px; }
+          .wp-live-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+          .wp-pred-panel { border-right: none; border-bottom: 1px solid var(--color-border); max-height: 300px; }
         }
-        @media (max-width: 640px) {
-          .wp-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-          .wp-sidebar {
-            height: auto;
-            border-right: none;
-            border-bottom: 2px solid var(--color-ink);
-            padding: 16px;
-          }
-          .wp-room-tabs { flex-direction: row; }
-          .wp-room-tab { flex: 1; justify-content: center; }
-          .wp-race-name { font-size: 18px; }
-          .wp-race-date { margin-bottom: 12px; }
-          .wp-race-hero { padding: 24px 20px 20px; }
-          .wp-race-hero-name { font-size: 26px; }
-          .pred-form { grid-template-columns: 1fr; }
-          .wp-countdown { padding: 20px; }
+        @media (max-width: 600px) {
+          .wp-strip { padding: 0 12px; }
+          .wp-strip-meta { display: none; }
+          .wp-hero { padding: 32px 20px 28px; }
+          .wp-hero-title { font-size: 32px; }
+          .wp-cd-num { font-size: 44px; }
+          .wp-upcoming-cd { padding: 24px 20px; }
+          .wp-upcoming-rsvp { padding: 24px 20px; }
         }
       `}</style>
     </div>
@@ -1478,27 +1228,28 @@ export default function WatchParty() {
             const isOwn = user?.id === m.user_id
             return (
               <div key={m.id} className={`fg-chat-msg${isOwn ? ' fg-chat-msg--own' : ''}`}>
-                {!isOwn && (
-                  <div
-                    className="fg-chat-avatar"
-                    style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
-                  >
-                    {m.profiles?.avatar_url
-                      ? <img src={m.profiles.avatar_url} alt="" />
-                      : (m.profiles?.username ?? '?')[0].toUpperCase()
-                    }
-                  </div>
-                )}
+                <div
+                  className="fg-chat-avatar"
+                  style={{ borderColor: m.profiles?.team_id ? getTeamColor(m.profiles.team_id) : undefined }}
+                >
+                  {m.profiles?.avatar_url
+                    ? <img src={m.profiles.avatar_url} alt="" />
+                    : (m.profiles?.username ?? '?')[0].toUpperCase()
+                  }
+                </div>
                 <div className="fg-chat-body">
                   <div className="fg-chat-meta">
-                    <span className="fg-chat-name">{m.profiles?.username ?? 'fan'}</span>
+                    {m.profiles?.username
+                      ? <Link to={`/profile/${m.profiles.username}`} className="fg-chat-name fg-chat-name-link">{m.profiles.username}</Link>
+                      : <span className="fg-chat-name">fan</span>
+                    }
                     <span className="fg-chat-time">
                       {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                   <div className="fg-chat-bubble">
                     <div className="fg-chat-text">
-                      {m.mood && m.mood !== m.text && <span style={{ marginRight: 4 }}>{m.mood}</span>}
+                      {m.mood && m.mood !== m.text && <span className="fg-chat-mood-badge">{m.mood}</span>}
                       {m.text}
                     </div>
                   </div>
@@ -1511,7 +1262,7 @@ export default function WatchParty() {
 
         {!isReadOnly && (
           <>
-            <div style={{ display: 'flex', gap: 4, padding: '8px 14px', borderTop: '1px solid var(--color-border)', overflowX: 'auto', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 2, padding: '6px 10px', borderTop: '1px solid var(--color-border)', overflowX: 'auto', flexShrink: 0, background: 'var(--color-paper)' }}>
               {MOODS.map(m => (
                 <button
                   key={m}
@@ -1537,13 +1288,19 @@ export default function WatchParty() {
                 className="fg-chat-send"
                 onClick={send}
                 disabled={sending || !input.trim() || !user}
+                title="Send"
               >
-                Send
+                ↑
               </button>
             </div>
             {!user && (
               <div style={{ padding: '8px 16px', borderTop: '1px solid var(--color-border)', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-muted)', flexShrink: 0 }}>
-                <Link to="/login" style={{ color: 'var(--color-ink)', fontWeight: 700 }}>Sign in</Link> to chat
+                <Link to={`/login?next=${encodeURIComponent(window.location.pathname)}`} style={{ color: 'var(--color-ink)', fontWeight: 700 }}>Sign in</Link> to chat
+              </div>
+            )}
+            {sendError && (
+              <div style={{ padding: '6px 16px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-red)', flexShrink: 0 }}>
+                {sendError}
               </div>
             )}
           </>

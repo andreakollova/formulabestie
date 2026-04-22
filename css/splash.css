@@ -47,14 +47,63 @@
   text-transform: uppercase;
   margin-bottom: 48px;
 }
+/* Two-panel layout */
+.splash-panels {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  max-width: 680px;
+  padding: 0 24px;
+}
+
+.splash-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 32px;
+  background: #fafafa;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.splash-panel-account {
+  background: #fff;
+  border-color: var(--color-ink);
+}
+
+.splash-panel-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 20px;
+}
+
+.splash-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+.splash-divider span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-muted);
+  letter-spacing: 0.1em;
+  background: #fff;
+  padding: 6px 0;
+}
+
 .splash-form {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
-  max-width: 360px;
-  padding: 0 24px;
 }
 .splash-label {
   font-family: var(--font-mono);
@@ -160,4 +209,65 @@
   color: var(--color-ink);
   text-align: center;
   white-space: nowrap;
+}
+
+/* ── Account panel ── */
+.splash-account-sub {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.splash-account-perks {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.splash-account-perks li {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-ink);
+}
+.splash-account-btn {
+  display: block;
+  width: 100%;
+  padding: 13px 20px;
+  background: var(--color-ink);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: background 0.13s ease;
+  margin-bottom: 12px;
+}
+.splash-account-btn:hover { background: #333; }
+.splash-account-link {
+  display: block;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color 0.12s ease;
+}
+.splash-account-link:hover { color: var(--color-ink); }
+
+/* ── Mobile: stack vertically ── */
+@media (max-width: 600px) {
+  .splash-panels { flex-direction: column; max-width: 400px; }
+  .splash-divider { padding: 12px 0; }
+  .splash-divider span { padding: 0 12px; }
+  .splash-panel { padding: 22px 20px; }
 }

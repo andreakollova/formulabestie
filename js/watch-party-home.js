@@ -15,6 +15,21 @@
   let cdInterval = null
   const PRE_RACE_MS = 60 * 60 * 1000  // 1h before
 
+  const FLAGS = {
+    'Bahrain': '🇧🇭', 'Saudi Arabia': '🇸🇦', 'Australia': '🇦🇺',
+    'Japan': '🇯🇵', 'China': '🇨🇳', 'United States': '🇺🇸',
+    'Italy': '🇮🇹', 'Monaco': '🇲🇨', 'Canada': '🇨🇦',
+    'Spain': '🇪🇸', 'Austria': '🇦🇹', 'United Kingdom': '🇬🇧',
+    'Hungary': '🇭🇺', 'Belgium': '🇧🇪', 'Netherlands': '🇳🇱',
+    'Azerbaijan': '🇦🇿', 'Singapore': '🇸🇬', 'Mexico': '🇲🇽',
+    'Brazil': '🇧🇷', 'Qatar': '🇶🇦', 'UAE': '🇦🇪', 'Abu Dhabi': '🇦🇪',
+    'France': '🇫🇷', 'Germany': '🇩🇪', 'Portugal': '🇵🇹',
+  }
+
+  function countryFlag(country) {
+    return FLAGS[country] || ''
+  }
+
   function isOpen(raceStart, status) {
     if (status === 'live' || status === 'pre-race') return true
     const now = Date.now()
@@ -37,6 +52,18 @@
     if (!currentRace) {
       card.innerHTML = '<div class="wpc-loading">No upcoming parties.</div>'
       return
+    }
+
+    // Point chat preview links to the specific party
+    const partyUrl = `/watch-party/${currentRace.slug}`
+    const partyLink = document.getElementById('wcpPartyLink')
+    const inputRow  = document.getElementById('wcpInputRow')
+    if (partyLink) {
+      partyLink.href = partyUrl
+      partyLink.textContent = 'Join the Party →'
+    }
+    if (inputRow) {
+      inputRow.onclick = () => window.location = partyUrl
     }
 
     // Fetch attendees
@@ -132,10 +159,10 @@
     `
 
     const attendBtn = currentUser
-      ? `<button class="wpc-btn-attend ${isAttending ? 'wpc-attending' : ''}" id="wpcAttendBtn">
+      ? `<button class="wpc-btn-attend ${isAttending ? 'wpc-attending' : 'wpc-btn-attend-solid'}" id="wpcAttendBtn">
            ${isAttending ? "🎟 I'll be there ✓" : "🎟 I'll be there"}
          </button>`
-      : `<a href="/watch-parties" class="wpc-btn-attend">🎟 I'll be there →</a>`
+      : `<a href="/watch-parties" class="wpc-btn-attend wpc-btn-attend-solid">🎟 I'll be there →</a>`
 
     const mainBtn = open
       ? `<a href="/watch-party/${currentRace.slug}" class="wpc-btn-join">🏁 Join the Party →</a>`
@@ -143,7 +170,7 @@
 
     const secondBtn = open
       ? (currentUser
-          ? `<button class="wpc-btn-attend ${isAttending ? 'wpc-attending' : ''}" id="wpcAttendBtn" style="font-size:9px;padding:9px 14px;">${isAttending ? "🎟 I'll be there ✓" : "🎟 I'll be there"}</button>`
+          ? `<button class="wpc-btn-attend ${isAttending ? 'wpc-attending' : 'wpc-btn-attend-solid'}" id="wpcAttendBtn" style="font-size:9px;padding:9px 14px;">${isAttending ? "🎟 I'll be there ✓" : "🎟 I'll be there"}</button>`
           : '')
       : `<a href="/watch-party/${currentRace.slug}" class="wpc-btn-more">ℹ️ More info →</a>`
 
@@ -158,7 +185,7 @@
         <h3 class="wpc-name">${currentRace.name}</h3>
       </div>
 
-      <div class="wpc-circuit">${currentRace.circuit} · ${currentRace.country}</div>
+      <div class="wpc-circuit">${countryFlag(currentRace.country)} ${currentRace.circuit} · ${currentRace.country}</div>
       <div class="wpc-date">${dateStr} · ${timeStr}</div>
 
       ${cdHtml}
@@ -259,7 +286,7 @@
 
     if (btn) {
       btn.disabled = false
-      btn.className = `wpc-btn-attend ${isAttending ? 'wpc-attending' : ''}`
+      btn.className = `wpc-btn-attend ${isAttending ? 'wpc-attending' : 'wpc-btn-attend-solid'}`
       btn.textContent = isAttending ? "🎟 I'll be there ✓" : "🎟 I'll be there"
     }
   }

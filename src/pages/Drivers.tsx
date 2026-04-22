@@ -12,12 +12,14 @@ function DriverCircle({
   driver,
   fanCount,
   isFollowing,
+  isMyDriver,
   toggling,
   onFollow,
 }: {
   driver: typeof DRIVERS[number]
   fanCount: number
   isFollowing: boolean
+  isMyDriver: boolean
   toggling: boolean
   onFollow: (e: React.MouseEvent) => void
 }) {
@@ -43,7 +45,7 @@ function DriverCircle({
           <span className="dc-team-dot" style={{ background: teamColor }} />
           {getTeamName(driver.team).replace('Scuderia ', '').replace('-AMG', '')}
         </div>
-        <div className="dc-fans">loved by {fanCount}</div>
+        <div className={`dc-fans${isMyDriver ? ' dc-fans-mine' : ''}`}>loved by {fanCount}</div>
       </div>
       <button
         className={`dc-follow-btn${isFollowing ? ' dc-follow-btn-on' : ''}`}
@@ -57,6 +59,13 @@ function DriverCircle({
   )
 }
 
+const GAME_TEAM_TO_ID: Record<string, string> = {
+  'Ferrari': 'ferrari', 'Mercedes-AMG': 'mercedes', 'McLaren': 'mclaren',
+  'Red Bull Racing': 'red-bull', 'Aston Martin': 'aston-martin', 'Alpine': 'alpine',
+  'Williams': 'williams', 'Racing Bulls': 'racing-bulls', 'Haas': 'haas',
+  'Audi': 'audi', 'Cadillac': 'cadillac',
+}
+
 export default function Drivers() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -64,7 +73,20 @@ export default function Drivers() {
   const [followed, setFollowed] = useState<FollowedSet>(new Set())
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
-  const [myDrivers, setMyDrivers] = useState<{ driver_id: string | null; driver2_id: string | null }>({ driver_id: null, driver2_id: null })
+  const [myDrivers, setMyDrivers] = useState<{ fav_driver_id: string | null; secondary_driver_id: string | null }>({ fav_driver_id: null, secondary_driver_id: null })
+
+  /* Auto-navigate to game team's first driver vault */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('fw_game_team')
+      if (!raw) return
+      const teamName = JSON.parse(raw).name
+      const teamId = GAME_TEAM_TO_ID[teamName]
+      if (!teamId) return
+      const driver = DRIVERS.find(d => d.team === teamId)
+      if (driver) navigate(`/drivers/${driver.id}`, { replace: true })
+    } catch {}
+  }, [navigate])
 
   useEffect(() => {
     async function load() {
@@ -92,11 +114,11 @@ export default function Drivers() {
     if (!user) return
     supabase
       .from('profiles')
-      .select('driver_id, driver2_id')
+      .select('fav_driver_id, secondary_driver_id')
       .eq('id', user.id)
       .single()
       .then(({ data }) => {
-        if (data) setMyDrivers({ driver_id: data.driver_id, driver2_id: data.driver2_id })
+        if (data) setMyDrivers({ fav_driver_id: data.fav_driver_id, secondary_driver_id: data.secondary_driver_id })
       })
   }, [user])
 
@@ -128,7 +150,7 @@ export default function Drivers() {
 
   if (loading) return <div className="fg-loading"><div className="fg-spinner" /></div>
 
-  const myDriverIds = [myDrivers.driver_id, myDrivers.driver2_id].filter(Boolean) as string[]
+  const myDriverIds = [myDrivers.fav_driver_id, myDrivers.secondary_driver_id].filter(Boolean) as string[]
   const myFavs = DRIVERS.filter(d => myDriverIds.includes(d.id))
   const rest = DRIVERS.filter(d => !myDriverIds.includes(d.id))
 
@@ -153,6 +175,7 @@ export default function Drivers() {
                   driver={driver}
                   fanCount={fanCounts[driver.id] ?? 0}
                   isFollowing={followed.has(driver.id)}
+                  isMyDriver={true}
                   toggling={toggling === driver.id}
                   onFollow={e => handleFollow(e, driver.id)}
                 />
@@ -171,6 +194,7 @@ export default function Drivers() {
               driver={driver}
               fanCount={fanCounts[driver.id] ?? 0}
               isFollowing={followed.has(driver.id)}
+              isMyDriver={false}
               toggling={toggling === driver.id}
               onFollow={e => handleFollow(e, driver.id)}
             />
@@ -327,6 +351,11 @@ export default function Drivers() {
           font-size: 9px;
           color: var(--color-muted);
           letter-spacing: 0.04em;
+        }
+        .dc-fans-mine {
+          color: var(--color-red);
+          font-weight: 700;
+          font-size: 10px;
         }
 
         .dc-follow-btn {

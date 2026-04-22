@@ -3,6 +3,8 @@
 (function () {
   const DAYS   = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const SB_URL = 'https://mjgdbeafnieqihxddqhe.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qZ2RiZWFmbmllcWloeGRkcWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTY4NzAsImV4cCI6MjA5MjI5Mjg3MH0.s_oMIRpFeD4dJaGkjdyrtjxxE0qS9mRxOQd8EN7QBkE';
 
   function applyName(name) {
     const display = name || 'You';
@@ -30,9 +32,26 @@
     setTimeout(() => { splash.style.display = 'none'; }, 700);
   }
 
-  /* Persist within the tab */
+  /* 1. If same tab session already has a name, skip splash */
   const saved = sessionStorage.getItem('pitwall_name');
   if (saved) { hideSplash(saved); }
+
+  /* 2. Check if logged in with a full Supabase account — auto-skip splash */
+  if (!saved && window.supabase) {
+    const sb = window.supabase.createClient(SB_URL, SB_KEY);
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      sb.from('profiles')
+        .select('display_name, username')
+        .eq('id', session.user.id)
+        .single()
+        .then(({ data }) => {
+          const name = data?.display_name || data?.username || session.user.email?.split('@')[0] || 'You';
+          sessionStorage.setItem('pitwall_name', name);
+          hideSplash(name);
+        });
+    });
+  }
 
   document.getElementById('splashForm').addEventListener('submit', function (e) {
     e.preventDefault();

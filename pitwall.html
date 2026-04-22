@@ -7,8 +7,8 @@
   <meta name="robots" content="noindex, nofollow">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <link rel="apple-touch-icon" href="img/favicon.png">
 
   <!-- Preconnect to Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,28 +35,61 @@
 </head>
 <body>
 
+<!-- Hide splash immediately if user already has a session (prevents flash on navigation) -->
+<script>
+  try {
+    if (sessionStorage.getItem('pitwall_name')) {
+      document.write('<style>#splash{display:none!important}</style>');
+    }
+  } catch(e) {}
+</script>
+
 <!-- ── Splash / Name gate ─────────────────────────────────────────────── -->
 <div class="splash" id="splash">
   <div class="splash-eyebrow">◆ F1 2026 · Personal Edition</div>
   <div class="splash-title"><em>Formulka</em></div>
   <div class="splash-sub">Your personal race command centre</div>
-  <form class="splash-form" id="splashForm">
-    <label class="splash-label" for="nameInput">Enter your name</label>
-    <input
-      class="splash-input"
-      id="nameInput"
-      type="text"
-      placeholder="your name"
-      maxlength="28"
-      autocomplete="off"
-      spellcheck="false"
-    >
-    <div class="splash-team-label">Your Team</div>
-    <div class="splash-team-picker" id="splashTeamPicker"></div>
 
-    <button class="splash-btn" type="submit">Enter Formulka</button>
-    <span class="splash-hint">Press Enter or click to continue</span>
-  </form>
+  <div class="splash-panels">
+
+    <!-- Quick access -->
+    <div class="splash-panel">
+      <div class="splash-panel-label">Quick access</div>
+      <form class="splash-form" id="splashForm">
+        <label class="splash-label" for="nameInput">Your name</label>
+        <input
+          class="splash-input"
+          id="nameInput"
+          type="text"
+          placeholder="your name"
+          maxlength="28"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <div class="splash-team-label">Your Team</div>
+        <div class="splash-team-picker" id="splashTeamPicker"></div>
+        <button class="splash-btn" type="submit">Enter Formulka →</button>
+      </form>
+    </div>
+
+    <!-- Divider -->
+    <div class="splash-divider"><span>or</span></div>
+
+    <!-- Full account -->
+    <div class="splash-panel splash-panel-account">
+      <div class="splash-panel-label">Full account</div>
+      <p class="splash-account-sub">Sign in to unlock your personalised experience.</p>
+      <ul class="splash-account-perks">
+        <li>💬 Watch party chat</li>
+        <li>🔒 Driver vault access</li>
+        <li>📓 GP journal &amp; predictions</li>
+        <li>⭐ Your drivers starred</li>
+      </ul>
+      <a href="/login" class="splash-account-btn">Sign in →</a>
+      <a href="/register" class="splash-account-link">New here? Create account</a>
+    </div>
+
+  </div>
 </div>
 
 <!-- ── Top strip ticker ───────────────────────────────────────────────── -->
@@ -68,8 +101,8 @@
 <section class="hero page-wrap">
   <div class="hero-top">
     <div class="brand-eyebrow">
-      <img src="favicon.png" class="hero-flag" alt="">
-      <span>Personal Edition · F1 2026</span>
+      <img src="img/logo.png" class="hero-flag" alt="">
+      <span>Formula Girlies · Racing Season 2026</span>
     </div>
     <nav class="hero-sitenav">
       <a href="#cal-section" class="hsn-link">Calendar</a>
@@ -78,29 +111,43 @@
       <a href="#wp-section" class="hsn-link">Watch Parties</a>
       <a href="#drivers-section" class="hsn-link">Drivers</a>
       <a href="#game-section" class="hsn-link">Games</a>
-      <a href="/me" class="hsn-link hsn-link-profile" id="hsnProfile">My Profile</a>
     </nav>
     <div class="brand-right">
-      <button class="greeting-btn" id="greetingBtn" aria-expanded="false">
-        <span id="greeting">Good morning</span>
-        <span class="greeting-arrow">↓</span>
-      </button>
-      <div class="dateline" id="dateline"></div>
-    </div>
-  </div>
+      <div class="brand-actions" id="brandActions" style="display:none;">
+        <a href="/messages" class="brand-icon-btn" id="pwMsgBtn" title="Messages">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="brand-notif-badge" id="pwMsgBadge" style="display:none;"></span>
+        </a>
+        <button class="brand-icon-btn" id="pwBellBtn" title="Notifications">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="brand-notif-badge" id="pwBellBadge" style="display:none;"></span>
+        </button>
+      </div>
+      <div class="brand-right-text">
+        <button class="greeting-btn" id="greetingBtn" aria-expanded="false">
+          <span id="greeting" class="greeting">Good morning</span>
+          <span class="greeting-arrow">▾</span>
+        </button>
+        <div class="dateline" id="dateline"></div>
 
-  <!-- Profile panel -->
-  <div class="profile-panel" id="profilePanel" hidden>
-    <div class="profile-panel-inner">
-      <div class="profile-field">
-        <label class="profile-label" for="profileName">Name</label>
-        <input class="profile-input" id="profileName" type="text" maxlength="28" autocomplete="off" spellcheck="false">
+        <!-- Greeting dropdown — inside brand-right-text so it anchors correctly -->
+        <div class="greet-dropdown" id="greetDropdown" hidden>
+          <a href="/me" class="greet-dd-item">My Profile</a>
+          <a href="/messages" class="greet-dd-item">Messages</a>
+          <button class="greet-dd-item greet-dd-signout" id="greetSignOut">Sign out</button>
+        </div>
       </div>
-      <div class="profile-field">
-        <label class="profile-label">My Team</label>
-        <div class="profile-team-picker" id="heroTeamPicker"></div>
+
+      <!-- Notification panel — anchored to brand-right -->
+      <div class="pw-notif-drop" id="pwNotifDrop" hidden>
+        <div class="pw-notif-drop-header">
+          <span class="pw-notif-drop-title">Notifications</span>
+          <button class="pw-notif-drop-clear" id="pwNotifClear">Mark all read</button>
+        </div>
+        <div class="pw-notif-drop-list" id="pwNotifList">
+          <div class="pw-notif-drop-empty">No notifications yet</div>
+        </div>
       </div>
-      <button class="profile-save-btn" id="profileSaveBtn">Save changes</button>
     </div>
   </div>
 
@@ -553,13 +600,13 @@
             <div class="wcp-blur-icon">💬</div>
             <div class="wcp-blur-title">Chat opens with the party</div>
             <div class="wcp-blur-sub">Join us 1 hour before lights out</div>
-            <a href="/watch-parties" class="wcp-blur-btn">View Watch Parties →</a>
+            <a href="/watch-parties" class="wcp-blur-btn" id="wcpPartyLink">View Watch Parties →</a>
           </div>
         </div>
       </div>
 
       <!-- Input (locked) -->
-      <div class="wcp-input-row" onclick="window.location='/watch-parties'" style="cursor:pointer;">
+      <div class="wcp-input-row" id="wcpInputRow" onclick="window.location='/watch-parties'" style="cursor:pointer;">
         <span class="wcp-input-placeholder">Message opens when party starts…</span>
         <span class="wcp-input-arrow">→</span>
       </div>
@@ -644,16 +691,16 @@
 <div class="footer-wrap page-wrap" style="padding-top:var(--space-xl);">
   <footer class="footer">
     <div class="f-left">
-      <img src="favicon.png" class="f-flag" alt="Formulka">
+      <img src="img/logo.png" class="f-flag" alt="Formulka">
       <div>
-        <div class="f-brand-label">Personal Edition</div>
-        <div class="f-note">F1 2026 <span class="f-dot"></span> For <span id="footerName">you</span></div>
+        <div class="f-brand-label">Formula Girlies</div>
+        <div class="f-note">Racing Season 2026 <span class="f-dot"></span> <span id="footerName">you</span></div>
       </div>
     </div>
     <div class="deco-dot-grid f-dotgrid"></div>
     <div class="f-right accent-rule">
-      <div class="f-cta">Lights out and away we go <span class="f-arrow">→</span></div>
-      <div class="f-sub">Formulka · Personal Edition</div>
+      <div class="f-cta">She believed she could, so she did <span class="f-arrow">→</span></div>
+      <div class="f-sub">Formula Girlies · Racing Season 2026</div>
     </div>
   </footer>
 </div>
@@ -689,6 +736,144 @@
 }
 .hsn-link-profile:hover { background: var(--color-ink, #111); color: #fff; border-color: var(--color-ink, #111); }
 @media (max-width: 900px) { .hero-sitenav { display: none; } }
+
+/* ── Brand right actions (messages + bell) ── */
+.brand-right { display: flex; align-items: center; gap: 10px; position: relative; flex-shrink: 0; }
+.brand-right-text { display: flex; flex-direction: column; align-items: flex-end; position: relative; }
+.greeting-btn .greeting { color: var(--color-ink, #111); }
+.greeting-btn:hover .greeting { color: var(--color-ink, #111); }
+.greeting-arrow {
+  font-size: 11px;
+  color: var(--color-red, #e8002d);
+  display: inline-block;
+  transition: transform 0.15s ease;
+  line-height: 1;
+}
+.greeting-btn[aria-expanded="true"] .greeting-arrow { transform: rotate(180deg); }
+.brand-actions { display: flex; align-items: center; gap: 4px; }
+.brand-icon-btn {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px;
+  border: none; background: none; cursor: pointer;
+  border-radius: 50%;
+  color: var(--color-muted, #888);
+  transition: background 0.12s ease, color 0.12s ease;
+  text-decoration: none;
+}
+.brand-icon-btn svg { width: 11px; height: 11px; }
+.brand-icon-btn:hover { background: var(--color-border, #e8e8e8); color: var(--color-ink, #111); }
+.brand-notif-badge {
+  position: absolute; top: 1px; right: 1px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--color-red, #e8002d);
+  border: 1px solid var(--color-paper, #fff);
+  pointer-events: none;
+}
+
+/* ── Greeting dropdown ── */
+.greet-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 180px;
+  background: #fff;
+  border: 2px solid #0A0A0A;
+  box-shadow: 3px 3px 0 #0A0A0A;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+.greet-dropdown[hidden] { display: none; }
+.greet-dd-item {
+  display: block; width: 100%;
+  padding: 11px 16px;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0A0A0A;
+  text-decoration: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+.greet-dd-item:last-child { border-bottom: none; }
+.greet-dd-item:hover { background: #fafafa; }
+.greet-dd-signout { color: var(--color-red, #E8022D); }
+
+/* ── Notifications panel ── */
+.pw-notif-drop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 300px;
+  background: var(--color-paper, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.10);
+  z-index: 9999;
+  overflow: hidden;
+}
+.pw-notif-drop[hidden] { display: none; }
+.pw-notif-drop-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+}
+.pw-notif-drop-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--color-ink, #111);
+}
+.pw-notif-drop-clear {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-muted, #888);
+  background: none; border: none; cursor: pointer;
+  padding: 0; transition: color 0.1s ease;
+}
+.pw-notif-drop-clear:hover { color: var(--color-ink, #111); }
+.pw-notif-drop-list { max-height: 320px; overflow-y: auto; }
+.pw-notif-drop-empty {
+  padding: 20px 16px;
+  font-family: var(--font-sans, sans-serif);
+  font-size: 12px; color: var(--color-muted, #888);
+  text-align: center;
+}
+.pw-notif-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border, #e8e8e8);
+  transition: background 0.1s ease;
+  cursor: pointer;
+}
+.pw-notif-item:last-child { border-bottom: none; }
+.pw-notif-item:hover { background: var(--color-border, #f0f0f0); }
+.pw-notif-item.unread { background: rgba(232,0,45,.03); }
+.pw-notif-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--color-red, #e8002d);
+  flex-shrink: 0; margin-top: 5px;
+}
+.pw-notif-item.read .pw-notif-dot { background: var(--color-border, #ccc); }
+.pw-notif-text {
+  font-family: var(--font-sans, sans-serif);
+  font-size: 12px; line-height: 1.45;
+  color: var(--color-ink, #111);
+}
+.pw-notif-time {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px; color: var(--color-muted, #888);
+  margin-top: 3px;
+}
 
 /* ── Watch Party Poster Card (new) ── */
 .wp-layout-new { grid-template-columns: 3fr 2fr; gap: 0; align-items: stretch; }
@@ -773,10 +958,10 @@
 }
 .wpc-circuit {
   font-family: var(--font-mono, monospace);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  color: rgba(255,255,255,0.28);
-  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-top: 12px;
   margin-bottom: 4px;
@@ -955,14 +1140,22 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   background: transparent;
-  color: rgba(255,255,255,0.7);
-  border: 1.5px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.85);
+  border: 1.5px solid rgba(255,255,255,0.35);
   cursor: pointer;
   text-align: center;
   text-decoration: none;
   transition: all 0.14s ease;
 }
 .wpc-btn-attend:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.5); color: #fff; }
+.wpc-btn-attend-solid {
+  background: #fff !important;
+  color: #0d0d0d !important;
+  border-color: #fff !important;
+  font-size: 11px !important;
+  padding: 14px 18px !important;
+}
+.wpc-btn-attend-solid:hover { background: rgba(255,255,255,0.9) !important; }
 .wpc-btn-attend.wpc-attending {
   background: var(--color-red, #e00);
   border-color: var(--color-red, #e00);
@@ -971,19 +1164,19 @@
 .wpc-btn-attend.wpc-attending:hover { background: #c00; border-color: #c00; }
 .wpc-btn-more {
   display: block;
-  padding: 10px 18px;
+  padding: 11px 18px;
   font-family: var(--font-mono, monospace);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.65);
   text-decoration: none;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1.5px solid rgba(255,255,255,0.28);
   text-align: center;
   transition: all 0.12s ease;
 }
-.wpc-btn-more:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
+.wpc-btn-more:hover { color: #fff; border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.06); }
 .wpc-btn-join {
   display: block;
   padding: 14px 18px;
@@ -1362,6 +1555,7 @@
 <script src="js/reveal.js"></script>
 <script src="js/watch-party-home.js"></script>
 <script src="js/drivers-home.js"></script>
+<script src="js/pitwall-nav.js"></script>
 
 </body>
 </html>

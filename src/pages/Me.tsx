@@ -4,10 +4,21 @@ import DefaultAvatar from '../components/DefaultAvatar'
 import Nav from '../components/Nav'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { getTeamColor, getTeamName, DRIVERS } from '../data/teams'
+import { TEAMS, getTeamColor, getTeamName, DRIVERS } from '../data/teams'
 import type { Database } from '../lib/supabase'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
+
+const COUNTRY_CODES: Record<string, string> = {
+  'Australia': 'au', 'Austria': 'at', 'Azerbaijan': 'az', 'Bahrain': 'bh',
+  'Belgium': 'be', 'Brazil': 'br', 'Canada': 'ca', 'China': 'cn',
+  'Czech Republic': 'cz', 'Denmark': 'dk', 'Finland': 'fi', 'France': 'fr',
+  'Germany': 'de', 'Hungary': 'hu', 'Italy': 'it', 'Japan': 'jp',
+  'Mexico': 'mx', 'Monaco': 'mc', 'Netherlands': 'nl', 'Poland': 'pl',
+  'Portugal': 'pt', 'Saudi Arabia': 'sa', 'Singapore': 'sg', 'Slovakia': 'sk',
+  'Spain': 'es', 'Sweden': 'se', 'Switzerland': 'ch', 'UAE': 'ae',
+  'United Kingdom': 'gb', 'United States': 'us',
+}
 type Race = Database['public']['Tables']['fg_races']['Row']
 
 interface JournalEntry {
@@ -37,6 +48,20 @@ export default function Me() {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([])
   const [editingNote, setEditingNote] = useState<string | null>(null)
   const [noteValue, setNoteValue] = useState('')
+
+  // Team picker
+  const [teamPickerOpen, setTeamPickerOpen] = useState(false)
+  const [savingTeam, setSavingTeam] = useState(false)
+
+  // Name editing
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+  const [savingName, setSavingName] = useState(false)
+
+  // Driver editing
+  const [editingDrivers, setEditingDrivers] = useState(false)
+  const [driverEdit, setDriverEdit] = useState({ fav: '', secondary: '' })
+  const [savingDrivers, setSavingDrivers] = useState(false)
 
   // Upcoming races
   const [upcomingRaces, setUpcomingRaces] = useState<Race[]>([])
@@ -116,6 +141,15 @@ export default function Me() {
   if (!profile) return null
 
   const teamColor = getTeamColor(profile.team_id ?? '')
+  // Keep localStorage in sync with current profile
+  try {
+    const name = profile.display_name ?? profile.username ?? ''
+    if (name) localStorage.setItem('fw_display_name', name)
+    if (profile.team_id) {
+      localStorage.setItem('fw_team_id', profile.team_id)
+      localStorage.setItem('fw_team_color', teamColor)
+    }
+  } catch {}
   const favDriver = DRIVERS.find(d => d.id === profile.fav_driver_id)
   const driver2 = DRIVERS.find(d => d.id === profile.secondary_driver_id)
 
@@ -136,6 +170,36 @@ export default function Me() {
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
+  }
+
+  const startEditName = () => {
+    setNameValue(profile?.display_name ?? '')
+    setEditingName(true)
+  }
+
+  const saveName = async () => {
+    if (!user || !profile) return
+    setSavingName(true)
+    const trimmed = nameValue.trim()
+    await supabase.from('profiles').update({ display_name: trimmed || null }).eq('id', user.id)
+    setProfile(p => p ? { ...p, display_name: trimmed || null } : p)
+    try { localStorage.setItem('fw_display_name', trimmed || '') } catch {}
+    setEditingName(false)
+    setSavingName(false)
+  }
+
+  const saveTeam = async (teamId: string) => {
+    if (!user) return
+    setSavingTeam(true)
+    await supabase.from('profiles').update({ team_id: teamId }).eq('id', user.id)
+    setProfile(p => p ? { ...p, team_id: teamId } : p)
+    const color = getTeamColor(teamId)
+    try {
+      localStorage.setItem('fw_team_id', teamId)
+      localStorage.setItem('fw_team_color', color)
+    } catch {}
+    setTeamPickerOpen(false)
+    setSavingTeam(false)
   }
 
   const startEditNote = (entryId: string, current: string | null) => {
@@ -164,6 +228,30 @@ export default function Me() {
     )
   }
 
+  const startEditDrivers = () => {
+    setDriverEdit({
+      fav: profile?.fav_driver_id ?? '',
+      secondary: profile?.secondary_driver_id ?? '',
+    })
+    setEditingDrivers(true)
+  }
+
+  const saveDrivers = async () => {
+    if (!user) return
+    setSavingDrivers(true)
+    await supabase.from('profiles').update({
+      fav_driver_id: driverEdit.fav || null,
+      secondary_driver_id: driverEdit.secondary || null,
+    }).eq('id', user.id)
+    setProfile(p => p ? {
+      ...p,
+      fav_driver_id: driverEdit.fav || null,
+      secondary_driver_id: driverEdit.secondary || null,
+    } : p)
+    setSavingDrivers(false)
+    setEditingDrivers(false)
+  }
+
   const markWatching = async (race: Race) => {
     if (!user) return
     setTogglingRace(race.id)
@@ -185,15 +273,9 @@ export default function Me() {
   const watchedCount = journalEntries.filter(e => e.attended).length
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--color-paper)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--color-paper)', ['--team-accent' as string]: teamColor || 'var(--color-ink)' }}>
       <Nav active="me" />
 
-      {/* Sign out bar */}
-      <div className="me-signout-bar">
-        <button onClick={handleSignOut} className="me-signout-btn">
-          Sign out
-        </button>
-      </div>
 
       <div className="fg-page" style={{ paddingTop: 0 }}>
 
@@ -217,18 +299,77 @@ export default function Me() {
           {/* Info */}
           <div className="me-hero-info">
             <div className="me-username">@{profile.username}</div>
-            {profile.display_name && (
-              <div className="me-display">{profile.display_name}</div>
+
+            {/* Editable display name */}
+            {editingName ? (
+              <div className="me-name-edit-row">
+                <input
+                  className="me-name-input"
+                  value={nameValue}
+                  onChange={e => setNameValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false) }}
+                  placeholder="Your display name"
+                  autoFocus
+                  maxLength={40}
+                />
+                <button className="me-name-save-btn" onClick={saveName} disabled={savingName}>
+                  {savingName ? '…' : 'Save'}
+                </button>
+                <button className="me-name-cancel-btn" onClick={() => setEditingName(false)}>✕</button>
+              </div>
+            ) : (
+              <div className="me-display-row">
+                <span className="me-display">{profile.display_name || <span style={{ color: 'var(--color-muted)', fontStyle: 'normal', fontSize: 13 }}>Add display name</span>}</span>
+                <button className="me-name-pen-btn" onClick={startEditName} title="Edit name">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+              </div>
             )}
             <div className="me-meta-row">
-              {profile.team_id && (
-                <span className="fg-team-pill" style={{ borderRadius: 'var(--radius)' }}>
-                  <span className="fg-team-dot" style={{ background: teamColor }} />
-                  {getTeamName(profile.team_id)}
-                </span>
-              )}
+              {/* Team picker */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  className="me-team-pill-btn"
+                  onClick={() => setTeamPickerOpen(o => !o)}
+                  style={{ borderColor: teamColor || 'var(--color-border)' }}
+                >
+                  <span className="fg-team-dot" style={{ background: teamColor || 'var(--color-muted)' }} />
+                  <span>{profile.team_id ? getTeamName(profile.team_id) : 'Pick a team'}</span>
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M1 1l4 4 4-4" stroke="#0A0A0A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                {teamPickerOpen && (
+                  <div className="me-team-picker-drop">
+                    {TEAMS.map(t => (
+                      <button
+                        key={t.id}
+                        className={`me-team-pick-item${profile.team_id === t.id ? ' me-team-pick-active' : ''}`}
+                        onClick={() => saveTeam(t.id)}
+                        disabled={savingTeam}
+                      >
+                        <span className="me-team-pick-dot" style={{ background: t.color }} />
+                        {t.name}
+                        {profile.team_id === t.id && <span style={{ marginLeft: 'auto', color: t.color }}>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {profile.country && (
-                <span className="me-country-tag">{profile.country}</span>
+                <span className="me-country-tag">
+                  {COUNTRY_CODES[profile.country] && (
+                    <img
+                      src={`https://flagcdn.com/w40/${COUNTRY_CODES[profile.country]}.png`}
+                      alt=""
+                      className="me-country-flag-icon"
+                    />
+                  )}
+                  {profile.country}
+                </span>
               )}
             </div>
           </div>
@@ -256,15 +397,60 @@ export default function Me() {
         <div className="me-hero-rule" />
 
         {/* ── My Drivers ── */}
-        {(favDriver || driver2) && (
-          <div className="me-section">
-            <div className="me-section-header">
+        <div className="me-section">
+          <div className="me-section-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
               <div className="fg-kicker">My Drivers</div>
               <h2 className="me-section-title">The <em>Grid</em></h2>
               <div className="me-section-rule" />
             </div>
+            {!editingDrivers && (
+              <button onClick={startEditDrivers} className="me-edit-drivers-btn">
+                Change drivers
+              </button>
+            )}
+          </div>
+
+          {editingDrivers ? (
+            <div className="me-driver-edit-panel">
+              <div className="me-driver-edit-row">
+                <label className="me-driver-edit-label">Main driver</label>
+                <select
+                  className="pred-select"
+                  value={driverEdit.fav}
+                  onChange={e => setDriverEdit(p => ({ ...p, fav: e.target.value }))}
+                >
+                  <option value="">— None —</option>
+                  {DRIVERS.map(d => (
+                    <option key={d.id} value={d.id}>#{d.number} {d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="me-driver-edit-row">
+                <label className="me-driver-edit-label">Secret second</label>
+                <select
+                  className="pred-select"
+                  value={driverEdit.secondary}
+                  onChange={e => setDriverEdit(p => ({ ...p, secondary: e.target.value }))}
+                >
+                  <option value="">— None —</option>
+                  {DRIVERS.map(d => (
+                    <option key={d.id} value={d.id}>#{d.number} {d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button onClick={saveDrivers} disabled={savingDrivers} className="fg-btn fg-btn-primary" style={{ width: 'auto', padding: '8px 20px' }}>
+                  {savingDrivers ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={() => setEditingDrivers(false)} className="fg-btn fg-btn-outline" style={{ width: 'auto', padding: '8px 20px' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
             <div className="me-drivers-row">
-              {favDriver && (
+              {favDriver ? (
                 <Link to={`/drivers/${favDriver.id}`} className="me-driver-card">
                   <div className="me-driver-num" style={{ color: getTeamColor(favDriver.team) }}>
                     {favDriver.number}
@@ -278,8 +464,16 @@ export default function Me() {
                     </div>
                   </div>
                 </Link>
+              ) : (
+                <button onClick={startEditDrivers} className="me-driver-card me-driver-empty">
+                  <div className="me-driver-num">+</div>
+                  <div className="me-driver-body">
+                    <div className="me-driver-role">No main driver yet</div>
+                    <div className="me-driver-name" style={{ fontSize: 13 }}>Add one</div>
+                  </div>
+                </button>
               )}
-              {driver2 && (
+              {driver2 ? (
                 <Link to={`/drivers/${driver2.id}`} className="me-driver-card">
                   <div className="me-driver-num" style={{ color: getTeamColor(driver2.team) }}>
                     {driver2.number}
@@ -293,10 +487,18 @@ export default function Me() {
                     </div>
                   </div>
                 </Link>
+              ) : (
+                <button onClick={startEditDrivers} className="me-driver-card me-driver-empty">
+                  <div className="me-driver-num">+</div>
+                  <div className="me-driver-body">
+                    <div className="me-driver-role">No second driver yet</div>
+                    <div className="me-driver-name" style={{ fontSize: 13 }}>Add one</div>
+                  </div>
+                </button>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* ── F1 story ── */}
         {profile.f1_story && (
@@ -485,6 +687,7 @@ export default function Me() {
           gap: 28px;
           padding: 28px 0 28px;
           flex-wrap: wrap;
+          border-top: 3px solid var(--team-accent, var(--color-ink));
         }
         .me-avatar {
           width: 80px;
@@ -545,15 +748,70 @@ export default function Me() {
           letter-spacing: -0.03em;
           color: var(--color-ink);
           line-height: 1.0;
+        }
+        .me-display-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
           margin-bottom: 10px;
         }
+        .me-name-pen-btn {
+          background: none; border: none; cursor: pointer; padding: 4px;
+          color: var(--color-muted);
+          border-radius: var(--radius);
+          display: flex; align-items: center; justify-content: center;
+          transition: color 0.12s, background 0.12s;
+          flex-shrink: 0;
+        }
+        .me-name-pen-btn:hover { color: var(--color-ink); background: var(--color-border); }
+        .me-name-edit-row {
+          display: flex; align-items: center; gap: 6px;
+          margin-bottom: 10px;
+        }
+        .me-name-input {
+          font-family: var(--font-display);
+          font-size: 24px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          color: var(--color-ink);
+          border: none;
+          border-bottom: 2px solid var(--team-accent, var(--color-ink));
+          background: transparent;
+          outline: none;
+          padding: 2px 0;
+          min-width: 0; width: 200px;
+        }
+        .me-name-save-btn {
+          font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          padding: 5px 10px;
+          background: var(--team-accent, var(--color-ink)); color: #fff;
+          border: none; border-radius: var(--radius); cursor: pointer;
+          transition: opacity 0.12s;
+        }
+        .me-name-save-btn:hover { opacity: 0.8; }
+        .me-name-cancel-btn {
+          font-size: 12px; background: none; border: none; cursor: pointer;
+          color: var(--color-muted); padding: 4px;
+        }
+        .me-name-cancel-btn:hover { color: var(--color-ink); }
         .me-meta-row {
           display: flex;
           align-items: center;
           gap: 10px;
           flex-wrap: wrap;
         }
+        .me-country-flag-icon {
+          width: 18px;
+          height: auto;
+          border-radius: 2px;
+          vertical-align: middle;
+          flex-shrink: 0;
+        }
         .me-country-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
           font-family: var(--font-mono);
           font-size: 10px;
           font-weight: 700;
@@ -565,6 +823,81 @@ export default function Me() {
           border-radius: var(--radius);
         }
         .fg-team-pill { border-radius: var(--radius) !important; }
+
+        /* Team picker */
+        .me-team-pill-btn {
+          display: inline-flex; align-items: center; gap: 7px;
+          padding: 5px 10px;
+          border: 1.5px solid var(--color-border);
+          border-radius: var(--radius);
+          background: none; cursor: pointer;
+          font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          color: var(--color-ink);
+          transition: border-color 0.12s, background 0.12s;
+        }
+        .me-team-pill-btn:hover { background: var(--color-border); }
+        .me-team-picker-drop {
+          position: absolute; top: calc(100% + 6px); left: 0;
+          min-width: 200px;
+          background: #fff;
+          border: 2px solid #0A0A0A;
+          box-shadow: 3px 3px 0 #0A0A0A;
+          z-index: 100;
+          display: flex; flex-direction: column;
+          max-height: 280px; overflow-y: auto;
+        }
+        .me-team-pick-item {
+          display: flex; align-items: center; gap: 8px;
+          padding: 9px 14px;
+          font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          color: var(--color-ink); background: none; border: none;
+          border-bottom: 1px solid #f0f0f0;
+          cursor: pointer; text-align: left; width: 100%;
+          transition: background 0.1s;
+        }
+        .me-team-pick-item:last-child { border-bottom: none; }
+        .me-team-pick-item:hover { background: #fafafa; }
+        .me-team-pick-active { background: #f5f5f5; font-weight: 700; }
+        .me-team-pick-dot {
+          width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+
+        /* Country flag card */
+        .me-country-section { margin-bottom: 40px; }
+        .me-country-card {
+          position: relative;
+          margin-top: 12px;
+          width: 100%;
+          max-width: 400px;
+          border-radius: var(--radius);
+          overflow: hidden;
+          border: 2px solid var(--color-ink);
+          aspect-ratio: 3 / 1.4;
+        }
+        .me-country-card-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .me-country-card-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
+          display: flex;
+          align-items: flex-end;
+          padding: 12px 16px;
+        }
+        .me-country-card-name {
+          font-family: var(--font-display);
+          font-size: 20px;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          color: #fff;
+          text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
 
         /* Hero stats */
         .me-hero-stats {
@@ -622,10 +955,10 @@ export default function Me() {
           color: var(--color-ink);
           margin: 6px 0 12px;
         }
-        .me-section-title em { font-style: italic; color: var(--color-red); }
+        .me-section-title em { font-style: italic; color: var(--team-accent, var(--color-red)); }
         .me-section-rule {
           height: 2px;
-          background: var(--color-red);
+          background: var(--team-accent, var(--color-red));
           border: none;
         }
 
@@ -680,6 +1013,68 @@ export default function Me() {
           display: flex;
           align-items: center;
         }
+
+        .me-driver-empty {
+          border: none;
+          cursor: pointer;
+          background: var(--color-white);
+          border: 2px dashed var(--color-border);
+          opacity: 0.6;
+          transition: opacity 0.12s ease;
+        }
+        .me-driver-empty:hover { opacity: 1; }
+        .me-edit-drivers-btn {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+          background: transparent;
+          border: 1px solid var(--color-border);
+          padding: 6px 12px;
+          cursor: pointer;
+          transition: all 0.12s ease;
+          white-space: nowrap;
+          margin-top: 4px;
+        }
+        .me-edit-drivers-btn:hover { color: var(--color-ink); border-color: var(--color-ink); }
+        .me-driver-edit-panel {
+          padding: 20px;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius);
+          background: var(--color-white);
+        }
+        .me-driver-edit-row { margin-bottom: 12px; }
+        .me-driver-edit-label {
+          display: block;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+          margin-bottom: 6px;
+        }
+        .pred-select {
+          width: 100%;
+          padding: 9px 32px 9px 12px;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          color: var(--color-ink);
+          background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 12px center;
+          background-size: 8px;
+          border: 1.5px solid var(--color-border);
+          border-radius: var(--radius);
+          appearance: none;
+          -webkit-appearance: none;
+          cursor: pointer;
+          transition: border-color 0.12s;
+        }
+        .pred-select:focus { outline: none; border-color: var(--team-accent, var(--color-ink)); }
+        .pred-select:hover { border-color: var(--color-ink); }
 
         /* Story */
         .me-story {

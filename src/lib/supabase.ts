@@ -88,6 +88,37 @@ export type Database = {
           created_at: string
         }
       }
+      fg_notifications: {
+        Row: {
+          id: string
+          user_id: string
+          from_user_id: string
+          type: 'follow' | 'message'
+          read: boolean
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          from_user_id: string
+          type: 'follow' | 'message'
+          read?: boolean
+        }
+      }
+      fg_direct_messages: {
+        Row: {
+          id: string
+          sender_id: string
+          receiver_id: string
+          text: string
+          read: boolean
+          created_at: string
+        }
+        Insert: {
+          sender_id: string
+          receiver_id: string
+          text: string
+        }
+      }
     }
   }
 }

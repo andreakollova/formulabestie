@@ -53,11 +53,11 @@
       if (session) {
         const { data: profile } = await sb
           .from('profiles')
-          .select('driver_id, driver2_id')
+          .select('fav_driver_id, secondary_driver_id')
           .eq('id', session.user.id)
           .single()
         if (profile) {
-          myDriverIds = [profile.driver_id, profile.driver2_id].filter(Boolean)
+          myDriverIds = [profile.fav_driver_id, profile.secondary_driver_id].filter(Boolean)
         }
       }
     } catch (e) { /* not logged in, ignore */ }

@@ -8,8 +8,22 @@ const PRE_RACE_OPEN_MS  = 60 * 60 * 1000       // 1h before race_start
 const RACE_DURATION_MS  = 2 * 60 * 60 * 1000   // ~2h race
 const POST_RACE_OPEN_MS = 60 * 60 * 1000        // 1h after race ends
 
+// Time simulation (admin only) — offset stored in localStorage
+export function getSimOffset(): number {
+  try { return parseInt(localStorage.getItem('fw_sim_offset_ms') ?? '0', 10) || 0 } catch { return 0 }
+}
+export function setSimOffset(ms: number): void {
+  try { localStorage.setItem('fw_sim_offset_ms', String(ms)) } catch {}
+}
+export function clearSimOffset(): void {
+  try { localStorage.removeItem('fw_sim_offset_ms') } catch {}
+}
+export function getNow(): number {
+  return Date.now() + getSimOffset()
+}
+
 export function computePhase(raceStartIso: string): Phase {
-  const now = Date.now()
+  const now = getNow()
   const start = new Date(raceStartIso).getTime()
   const raceEnd = start + RACE_DURATION_MS
 
@@ -39,5 +53,5 @@ export function isWatchPartyOpen(phase: Phase): boolean {
 export function msUntilOpen(raceStartIso: string): number {
   const start = new Date(raceStartIso).getTime()
   const opens = start - PRE_RACE_OPEN_MS
-  return Math.max(0, opens - Date.now())
+  return Math.max(0, opens - getNow())
 }

@@ -1,6 +1,6 @@
 export const TEAMS = [
   { id: 'ferrari',   name: 'Scuderia Ferrari',      color: '#E8022D' },
-  { id: 'mercedes',  name: 'Mercedes-AMG',           color: '#25F6D2' },
+  { id: 'mercedes',  name: 'Mercedes-AMG',           color: '#1BD0AF' },
   { id: 'mclaren',   name: 'McLaren',                color: '#FF8002' },
   { id: 'red-bull',  name: 'Red Bull Racing',        color: '#3671C6' },
   { id: 'aston',     name: 'Aston Martin',           color: '#239971' },

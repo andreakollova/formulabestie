@@ -3,10 +3,23 @@ import { Link } from 'react-router-dom'
 import Nav from '../components/Nav'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { computePhase, isWatchPartyOpen, msUntilOpen, type Phase } from '../lib/racePhase'
+import { computePhase, isWatchPartyOpen, msUntilOpen, getNow, getSimOffset, setSimOffset, clearSimOffset, type Phase } from '../lib/racePhase'
 import type { Database } from '../lib/supabase'
 
 type Race = Database['public']['Tables']['fg_races']['Row']
+
+// Country → ISO 3166-1 alpha-2 for flagcdn.com
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Australia': 'au', 'China': 'cn', 'Japan': 'jp', 'Bahrain': 'bh',
+  'Saudi Arabia': 'sa', 'USA': 'us', 'United States': 'us', 'Italy': 'it',
+  'Monaco': 'mc', 'Canada': 'ca', 'Spain': 'es', 'Austria': 'at',
+  'United Kingdom': 'gb', 'UK': 'gb', 'Britain': 'gb', 'Hungary': 'hu',
+  'Belgium': 'be', 'Netherlands': 'nl', 'Singapore': 'sg', 'Azerbaijan': 'az',
+  'Mexico': 'mx', 'Brazil': 'br', 'Las Vegas': 'us', 'Qatar': 'qa',
+  'Abu Dhabi': 'ae', 'UAE': 'ae', 'France': 'fr', 'Germany': 'de',
+  'Portugal': 'pt', 'Turkey': 'tr', 'Russia': 'ru', 'Vietnam': 'vn',
+  'Miami': 'us', 'Emilia Romagna': 'it', 'São Paulo': 'br', 'Sao Paulo': 'br',
+}
 
 interface Attendee {
   user_id: string
@@ -57,10 +70,12 @@ export default function WatchParties() {
   const { user } = useAuth()
   const [races, setRaces] = useState<Race[]>([])
   const [loading, setLoading] = useState(true)
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(getNow)
   const [attendeeMap, setAttendeeMap] = useState<Record<string, Attendee[]>>({})
   const [userAttending, setUserAttending] = useState<Set<string>>(new Set())
   const [togglingRace, setTogglingRace] = useState<string | null>(null)
+  const [adminOpen, setAdminOpen] = useState(false)
+  const [simOffset, setSimOffsetState] = useState(getSimOffset)
 
   useEffect(() => {
     supabase
@@ -71,7 +86,7 @@ export default function WatchParties() {
         setRaces((data ?? []) as Race[])
         setLoading(false)
       })
-    const interval = setInterval(() => setNow(Date.now()), 1_000)
+    const interval = setInterval(() => setNow(getNow()), 1_000)
     return () => clearInterval(interval)
   }, [])
 
@@ -177,7 +192,7 @@ export default function WatchParties() {
                     onClick={e => toggleAttending(e, featuredRace.id)}
                     disabled={togglingRace === featuredRace.id}
                   >
-                    {userAttending.has(featuredRace.id) ? "I'll be there ✓" : "I'll be there"}
+                    {userAttending.has(featuredRace.id) ? "I'll join the party ✓" : "I'll join the party"}
                   </button>
                 )}
               </div>
@@ -195,30 +210,48 @@ export default function WatchParties() {
 
             {/* Right: countdown */}
             <div className="wpl-hero-right">
-              <div className="wpl-cd-label">PARTY OPENS IN</div>
-              <div className="wpl-cd-blocks">
-                {cdDays > 0 && (
-                  <div className="wpl-cd-block">
-                    <span className="wpl-cd-num">{String(cdDays).padStart(2, '0')}</span>
-                    <span className="wpl-cd-unit">Days</span>
+              {isWatchPartyOpen(featuredRace._phase) ? (
+                <>
+                  <div className="wpl-cd-party-open">
+                    <span className="wpl-cd-party-emojis">🏎️ 🥂 💃🏻</span>
+                    <div className="wpl-cd-party-title">Party is open!</div>
+                    <div className="wpl-cd-party-sub">Get in there, the race is on ✨</div>
                   </div>
-                )}
-                <div className="wpl-cd-block">
-                  <span className="wpl-cd-num">{String(cdHours).padStart(2, '0')}</span>
-                  <span className="wpl-cd-unit">Hrs</span>
-                </div>
-                <div className="wpl-cd-block">
-                  <span className="wpl-cd-num">{String(cdMins).padStart(2, '0')}</span>
-                  <span className="wpl-cd-unit">Min</span>
-                </div>
-                <div className="wpl-cd-block">
-                  <span className="wpl-cd-num">{String(cdSecs).padStart(2, '0')}</span>
-                  <span className="wpl-cd-unit">Sec</span>
-                </div>
-              </div>
-              <div className="wpl-cd-status">
-                <StatusBadge phase={featuredRace._phase} />
-              </div>
+                  <div className="wpl-cd-status" style={{ marginTop: 20 }}>
+                    <StatusBadge phase={featuredRace._phase} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="wpl-cd-label">
+                    <span style={{ marginRight: 8 }}>🏎️ 🥂 💃🏻</span>
+                    PARTY OPENS IN
+                  </div>
+                  <div className="wpl-cd-blocks">
+                    {cdDays > 0 && (
+                      <div className="wpl-cd-block">
+                        <span className="wpl-cd-num">{String(cdDays).padStart(2, '0')}</span>
+                        <span className="wpl-cd-unit">Days</span>
+                      </div>
+                    )}
+                    <div className="wpl-cd-block">
+                      <span className="wpl-cd-num">{String(cdHours).padStart(2, '0')}</span>
+                      <span className="wpl-cd-unit">Hrs</span>
+                    </div>
+                    <div className="wpl-cd-block">
+                      <span className="wpl-cd-num">{String(cdMins).padStart(2, '0')}</span>
+                      <span className="wpl-cd-unit">Min</span>
+                    </div>
+                    <div className="wpl-cd-block">
+                      <span className="wpl-cd-num">{String(cdSecs).padStart(2, '0')}</span>
+                      <span className="wpl-cd-unit">Sec</span>
+                    </div>
+                  </div>
+                  <div className="wpl-cd-status">
+                    <StatusBadge phase={featuredRace._phase} />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -245,17 +278,30 @@ export default function WatchParties() {
               const attendees = attendeeMap[race.id] ?? []
               const isAttending = userAttending.has(race.id)
 
+              const isUpcoming = race._phase === 'upcoming'
+              const flagCode = COUNTRY_FLAGS[race.country] ?? ''
+
               return (
                 <Link
                   key={race.id}
                   to={`/watch-party/${race.slug}`}
-                  className={`wpl-card${isActive ? ' wpl-card-active' : ''}${isFinished ? ' wpl-card-finished' : ''}${isLive ? ' wpl-card-live' : ''}`}
+                  className={`wpl-card${isActive ? ' wpl-card-active' : ''}${isFinished ? ' wpl-card-finished' : ''}${isLive ? ' wpl-card-live' : ''}${isUpcoming ? ' wpl-card-locked' : ''}`}
                 >
                   <div className="wpl-card-top">
                     <StatusBadge phase={race._phase} />
                     <span className="wpl-card-round">R{String(race.round).padStart(2, '0')}</span>
                   </div>
-                  <div className="wpl-card-name">{race.name}</div>
+                  <div className="wpl-card-name">
+                    {flagCode && (
+                      <img
+                        src={`https://flagcdn.com/16x12/${flagCode}.png`}
+                        width="16" height="12"
+                        alt={race.country}
+                        style={{ marginRight: 6, verticalAlign: 'middle', borderRadius: 1 }}
+                      />
+                    )}
+                    {race.name}
+                  </div>
                   <div className="wpl-card-circuit">{race.circuit}</div>
                   <div className="wpl-card-country">{race.country}</div>
                   <div className="wpl-card-date">
@@ -263,6 +309,17 @@ export default function WatchParties() {
                       day: 'numeric', month: 'short', year: 'numeric',
                     })}
                   </div>
+
+                  {/* Locked / open state */}
+                  {isUpcoming && (
+                    <div className="wpl-card-locked-row">
+                      <span className="wpl-lock-icon">🔒</span>
+                      <span className="wpl-card-locked-label">Party closed · Opens 1h before</span>
+                    </div>
+                  )}
+                  {isActive && (
+                    <div className="wpl-card-enter">Enter the party →</div>
+                  )}
 
                   {/* Attending row */}
                   <div className="wpl-card-footer">
@@ -285,6 +342,55 @@ export default function WatchParties() {
                 </Link>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Admin time simulation panel ── */}
+      <div className="wpl-admin-bar">
+        <button className="wpl-admin-toggle" onClick={() => setAdminOpen(o => !o)}>
+          ⚙ Admin {adminOpen ? '▲' : '▼'}
+        </button>
+        {adminOpen && (
+          <div className="wpl-admin-panel">
+            <div className="wpl-admin-title">Time Simulation</div>
+            <div className="wpl-admin-row">
+              <span className="wpl-admin-lbl">Offset:</span>
+              <span className="wpl-admin-val">{simOffset === 0 ? 'none' : `${(simOffset / 3_600_000).toFixed(1)}h`}</span>
+            </div>
+            <div className="wpl-admin-row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Real time', delta: null },
+                { label: '2h before', delta: -2 * 3_600_000 },
+                { label: '1h before', delta: -1 * 3_600_000 },
+                { label: 'Race start', delta: 0 },
+                { label: '1h in', delta: 1 * 3_600_000 },
+                { label: 'Race end', delta: 2 * 3_600_000 },
+                { label: '3h after', delta: 3 * 3_600_000 },
+              ].map(({ label, delta }) => {
+                const raceStart = featuredRace ? new Date(featuredRace.race_start).getTime() : 0
+                const targetOffset = delta === null ? null : (raceStart + delta) - Date.now()
+                const isActive = delta === null ? simOffset === 0 : Math.abs(simOffset - (targetOffset ?? 0)) < 60_000
+                return (
+                  <button
+                    key={label}
+                    className={`wpl-admin-btn${isActive ? ' active' : ''}`}
+                    onClick={() => {
+                      if (delta === null) { clearSimOffset(); setSimOffsetState(0) }
+                      else { setSimOffset(targetOffset!); setSimOffsetState(targetOffset!) }
+                      setNow(getNow())
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="wpl-admin-row">
+              <span className="wpl-admin-lbl" style={{ fontSize: 9 }}>
+                Simulated time: {new Date(getNow()).toLocaleTimeString()}
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -469,6 +575,28 @@ export default function WatchParties() {
           padding-bottom: 8px;
         }
         .wpl-cd-status { margin-top: 4px; }
+        .wpl-cd-party-open {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .wpl-cd-party-emojis {
+          font-size: 32px;
+          letter-spacing: 4px;
+        }
+        .wpl-cd-party-title {
+          font-family: var(--font-display);
+          font-size: clamp(28px, 4vw, 48px);
+          font-weight: 900;
+          letter-spacing: -0.03em;
+          color: #fff;
+          line-height: 1;
+        }
+        .wpl-cd-party-sub {
+          font-family: var(--font-sans);
+          font-size: 14px;
+          color: rgba(255,255,255,0.6);
+        }
 
         /* ── Badges ── */
         .wp-badge {
@@ -628,6 +756,106 @@ export default function WatchParties() {
           color: #fff;
         }
         .wpl-card-attend-btn:disabled { opacity: 0.5; cursor: default; }
+
+        /* Locked state */
+        .wpl-card-locked { opacity: 0.75; }
+        .wpl-card-locked-row {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          margin-bottom: 8px;
+        }
+        .wpl-lock-icon { font-size: 10px; }
+        .wpl-card-locked-label {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          color: var(--color-muted);
+          letter-spacing: 0.05em;
+        }
+
+        /* Enter party button */
+        .wpl-card-enter {
+          display: inline-block;
+          margin-bottom: 10px;
+          padding: 6px 12px;
+          background: #1a8a5a;
+          color: #fff;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          border-radius: var(--radius);
+        }
+
+        /* Admin panel */
+        .wpl-admin-bar {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 12px 24px 24px;
+        }
+        .wpl-admin-toggle {
+          background: transparent;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius);
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          color: var(--color-muted);
+          padding: 4px 10px;
+          cursor: pointer;
+        }
+        .wpl-admin-toggle:hover { color: var(--color-ink); border-color: var(--color-ink); }
+        .wpl-admin-panel {
+          margin-top: 10px;
+          padding: 14px 16px;
+          border: 2px solid var(--color-ink);
+          border-radius: var(--radius);
+          background: var(--color-paper);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .wpl-admin-title {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: var(--color-red);
+        }
+        .wpl-admin-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .wpl-admin-lbl {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--color-muted);
+          min-width: 48px;
+        }
+        .wpl-admin-val {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--color-ink);
+        }
+        .wpl-admin-btn {
+          padding: 4px 10px;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius);
+          background: transparent;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          color: var(--color-ink);
+          cursor: pointer;
+          transition: all 0.12s;
+        }
+        .wpl-admin-btn:hover { border-color: var(--color-ink); background: var(--color-paper-2); }
+        .wpl-admin-btn.active { background: var(--color-ink); color: #fff; }
 
         @media (max-width: 900px) {
           .wpl-hero-inner { grid-template-columns: 1fr; gap: 32px; padding: 40px 24px; }
