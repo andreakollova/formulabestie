@@ -6,7 +6,7 @@ export const TEAMS = [
   { id: 'aston',     name: 'Aston Martin',           color: '#239971' },
   { id: 'alpine',    name: 'Alpine',                 color: '#00A1E8' },
   { id: 'williams',  name: 'Williams',               color: '#65C4FF' },
-  { id: 'rb',        name: 'Racing Bulls',           color: '#6792FF' },
+  { id: 'rb',        name: 'Racing Bulls',           color: '#026DFE' },
   { id: 'haas',      name: 'Haas F1 Team',           color: '#F01717' },
   { id: 'audi',      name: 'Audi F1',                color: '#666168' },
   { id: 'cadillac',  name: 'Cadillac F1',            color: '#8A9099' },
