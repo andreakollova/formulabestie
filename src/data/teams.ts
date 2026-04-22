@@ -14,7 +14,7 @@ export const TEAMS = [
 
 export const DRIVERS = [
   { id: 'leclerc',    name: 'Charles Leclerc',       team: 'ferrari',  number: 16, photo: '/drivers/leclerc.jpg' },
-  { id: 'hamilton',   name: 'Lewis Hamilton',         team: 'ferrari',  number: 44, photo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/2025_Japan_GP_-_Ferrari_-_Lewis_Hamilton_-_Fanzone_Stage.jpg/330px-2025_Japan_GP_-_Ferrari_-_Lewis_Hamilton_-_Fanzone_Stage.jpg' },
+  { id: 'hamilton',   name: 'Lewis Hamilton',         team: 'ferrari',  number: 44, photo: '/drivers/hamilton.jpg' },
   { id: 'russell',    name: 'George Russell',         team: 'mercedes', number: 63, photo: '/drivers/russell.jpg' },
   { id: 'antonelli',  name: 'Andrea Kimi Antonelli',  team: 'mercedes', number: 12, photo: '/drivers/antonelli.jpg' },
   { id: 'norris',     name: 'Lando Norris',           team: 'mclaren',  number: 4,  photo: '/drivers/norris.jpg' },
