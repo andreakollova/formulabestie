@@ -288,7 +288,7 @@ export default function Nav({ active }: NavProps) {
           padding: 0 24px;
           height: 52px;
           display: grid;
-          grid-template-columns: auto 1fr auto;
+          grid-template-columns: 1fr auto 1fr;
           align-items: center;
           gap: 24px;
         }
@@ -345,6 +345,7 @@ export default function Nav({ active }: NavProps) {
           align-items: center;
           gap: 8px;
           flex-shrink: 0;
+          justify-content: flex-end;
         }
         .pw-actions { display: flex; align-items: center; gap: 2px; }
         .pw-icon-btn {
@@ -633,7 +634,7 @@ export default function Nav({ active }: NavProps) {
           .pw-link, .pw-link-btn { padding: 6px 6px; }
         }
         @media (max-width: 560px) {
-          .pw-nav-inner { grid-template-columns: auto auto; }
+          .pw-nav-inner { grid-template-columns: 1fr auto; }
           .pw-links { display: none; }
           .pw-greet-text { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
