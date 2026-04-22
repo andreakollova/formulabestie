@@ -25,6 +25,15 @@
   margin-bottom: 16px;
 }
 .full-news-title em { font-style: italic; color: var(--color-red); }
+.full-news-tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(14px, 1.6vw, 18px);
+  font-weight: 500;
+  color: var(--color-muted);
+  letter-spacing: -0.01em;
+  margin-bottom: 20px;
+}
 .full-news-rule { height: 3px; background: var(--color-red); }
 
 /* ── Full news layout: lead + 3-col secondary + 3-col rest ── */
@@ -209,6 +218,15 @@
   margin-bottom: 16px;
 }
 .wp-title em { font-style: italic; color: var(--color-red); }
+.wp-tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(14px, 1.6vw, 18px);
+  font-weight: 500;
+  color: var(--color-muted);
+  letter-spacing: -0.01em;
+  margin-bottom: 20px;
+}
 .wp-rule { height: 3px; background: var(--color-red); }
 
 .wp-layout {

@@ -97,6 +97,24 @@ export default function Nav({ active }: NavProps) {
     return () => { supabase.removeChannel(channel) }
   }, [user])
 
+  // Sync team color + display name when Me.tsx dispatches changes
+  useEffect(() => {
+    function onTeamChange(e: Event) {
+      const color = (e as CustomEvent<{ color: string }>).detail.color
+      if (color) setTeamColor(color)
+    }
+    function onNameChange(e: Event) {
+      const name = (e as CustomEvent<{ name: string }>).detail.name
+      if (name) setDisplayName(name)
+    }
+    window.addEventListener('fw_team_changed', onTeamChange)
+    window.addEventListener('fw_name_changed', onNameChange)
+    return () => {
+      window.removeEventListener('fw_team_changed', onTeamChange)
+      window.removeEventListener('fw_name_changed', onNameChange)
+    }
+  }, [])
+
   // Close panels when clicking outside
   useEffect(() => {
     function onDown(e: MouseEvent) {

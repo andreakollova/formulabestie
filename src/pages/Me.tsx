@@ -183,7 +183,10 @@ export default function Me() {
     const trimmed = nameValue.trim()
     await supabase.from('profiles').update({ display_name: trimmed || null }).eq('id', user.id)
     setProfile(p => p ? { ...p, display_name: trimmed || null } : p)
-    try { localStorage.setItem('fw_display_name', trimmed || '') } catch {}
+    try {
+      localStorage.setItem('fw_display_name', trimmed || '')
+      window.dispatchEvent(new CustomEvent('fw_name_changed', { detail: { name: trimmed } }))
+    } catch {}
     setEditingName(false)
     setSavingName(false)
   }
@@ -197,6 +200,7 @@ export default function Me() {
     try {
       localStorage.setItem('fw_team_id', teamId)
       localStorage.setItem('fw_team_color', color)
+      window.dispatchEvent(new CustomEvent('fw_team_changed', { detail: { color } }))
     } catch {}
     setTeamPickerOpen(false)
     setSavingTeam(false)
