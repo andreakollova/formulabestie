@@ -168,7 +168,7 @@ export default function Nav({ active }: NavProps) {
             <a href="/#standings-section" className="pw-link">Standings</a>
             <a href="/#news-section"   className="pw-link">News</a>
             <Link to="/watch-parties"  className={`pw-link${active === 'parties'  ? ' pw-link-active' : ''}`}>Watch Parties</Link>
-            <Link to="/drivers"        className={`pw-link${active === 'drivers'  ? ' pw-link-active' : ''}`}>Drivers</Link>
+            <a href="/#drivers-section" className="pw-link">Drivers</a>
             <a href="/#game-section"   className="pw-link">Games</a>
             <button className={`pw-link pw-link-btn${active === 'me' ? ' pw-link-active' : ''}`} onClick={() => guardedLink('/me')}>My Profile</button>
           </div>

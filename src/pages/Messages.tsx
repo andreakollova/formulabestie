@@ -203,7 +203,7 @@ function Inbox() {
           letter-spacing: 0.04em;
         }
         .msg-convo-badge {
-          background: #E8022D;
+          background: var(--team-accent, #E8022D);
           color: #fff;
           font-family: var(--font-mono);
           font-size: 9px;
@@ -561,7 +561,7 @@ function Conversation() {
           word-break: break-word;
         }
         .dm-msg-own .dm-bubble {
-          background: var(--color-ink);
+          background: var(--team-accent, var(--color-ink));
           color: #fff;
           border-radius: 20px 20px 5px 20px;
         }
@@ -599,7 +599,7 @@ function Conversation() {
           width: 42px;
           height: 42px;
           border-radius: 50%;
-          background: var(--color-ink);
+          background: var(--team-accent, var(--color-ink));
           color: #fff;
           border: none;
           font-size: 18px;
@@ -608,9 +608,9 @@ function Conversation() {
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          transition: background 0.12s;
+          transition: background 0.12s, filter 0.12s;
         }
-        .dm-send:hover { background: #333; }
+        .dm-send:hover { filter: brightness(0.85); }
         .dm-send:disabled { opacity: 0.4; cursor: default; }
 
         @media (max-width: 640px) {
@@ -627,5 +627,20 @@ function Conversation() {
 
 export default function Messages() {
   const { username } = useParams<{ username?: string }>()
-  return username ? <Conversation /> : <Inbox />
+  const [teamColor, setTeamColor] = useState(() => {
+    try { return localStorage.getItem('fw_team_color') ?? '' } catch { return '' }
+  })
+  useEffect(() => {
+    function onTeamChange(e: Event) {
+      const color = (e as CustomEvent<{ color: string }>).detail.color
+      if (color) setTeamColor(color)
+    }
+    window.addEventListener('fw_team_changed', onTeamChange)
+    return () => window.removeEventListener('fw_team_changed', onTeamChange)
+  }, [])
+  return (
+    <div style={teamColor ? { '--team-accent': teamColor } as React.CSSProperties : undefined}>
+      {username ? <Conversation /> : <Inbox />}
+    </div>
+  )
 }

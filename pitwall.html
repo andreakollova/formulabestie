@@ -627,7 +627,14 @@
   <div class="drv-home-scroll" id="drvHomeScroll">
     <!-- filled by js/drivers-home.js -->
   </div>
-  <a href="/drivers" class="drv-home-cta">View all drivers →</a>
+  <div class="drv-scroll-arrows">
+    <button class="drv-arrow-btn" onclick="document.getElementById('drvHomeScroll').scrollBy({left:-320,behavior:'smooth'})" aria-label="Scroll left">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="drv-arrow-btn" onclick="document.getElementById('drvHomeScroll').scrollBy({left:320,behavior:'smooth'})" aria-label="Scroll right">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
 </section>
 
 <!-- ── Game Section ───────────────────────────────────────────────────── -->
@@ -1527,24 +1534,27 @@
   letter-spacing: 0.04em;
   text-align: center;
 }
-.drv-home-cta {
-  display: block;
-  text-align: right;
+.drv-scroll-arrows {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 20px;
-  font-family: var(--font-mono, monospace);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-ink, #111);
-  text-decoration: none;
-  border-bottom: 2px solid var(--color-ink, #111);
-  padding-bottom: 2px;
-  width: fit-content;
-  margin-left: auto;
-  transition: opacity 0.12s ease;
 }
-.drv-home-cta:hover { opacity: 0.6; }
+.drv-arrow-btn {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--color-ink, #111);
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  color: var(--color-ink, #111);
+  flex-shrink: 0;
+}
+.drv-arrow-btn:hover { background: var(--color-ink, #111); color: #fff; }
 </style>
 
 <!-- ── JavaScript ────────────────────────────────────────────────────── -->
