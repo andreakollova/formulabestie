@@ -52,7 +52,48 @@
 
   <div class="splash-panels">
 
-    <!-- Quick access -->
+    <!-- Full account — primary -->
+    <div class="splash-panel splash-panel-account">
+
+      <!-- Default: perks + CTAs -->
+      <div id="splashAccountDefault">
+        <div class="splash-panel-label">Join the besties</div>
+        <div class="splash-account-hero">Your season.<br>Your drivers.<br>Your vault.</div>
+        <ul class="splash-account-perks">
+          <li><span class="perk-icon">💬</span><div><strong>Watch party chat</strong><span>Race day with your people</span></div></li>
+          <li><span class="perk-icon">🏆</span><div><strong>Driver vault</strong><span>Exclusive content for your faves</span></div></li>
+          <li><span class="perk-icon">📓</span><div><strong>GP journal &amp; predictions</strong><span>Track your calls all season</span></div></li>
+          <li><span class="perk-icon">⭐</span><div><strong>Your drivers starred</strong><span>Follow the ones you love</span></div></li>
+        </ul>
+        <a href="/register" class="splash-cta-btn">Create account — it's free →</a>
+        <button class="splash-signin-toggle" id="splashSignInToggle">Already a bestie? Sign in</button>
+      </div>
+
+      <!-- Login form (hidden by default) -->
+      <div id="splashLoginView" style="display:none">
+        <button class="splash-back-btn" id="splashBackBtn">← Back</button>
+        <div class="splash-panel-label" style="margin-top:12px">Sign in</div>
+        <form id="splashLoginFormEl" class="splash-login-form">
+          <div class="splash-field">
+            <label class="splash-label" for="splashEmail">Email</label>
+            <input type="email" class="splash-input-sm" id="splashEmail" placeholder="your@email.com" autocomplete="email">
+          </div>
+          <div class="splash-field">
+            <label class="splash-label" for="splashPassword">Password</label>
+            <input type="password" class="splash-input-sm" id="splashPassword" placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <div class="splash-login-error" id="splashLoginError"></div>
+          <button type="submit" class="splash-cta-btn" id="splashLoginBtn">Sign in →</button>
+          <a href="/register" class="splash-signin-toggle" style="display:block;text-align:center;margin-top:10px">No account? Create one</a>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Divider -->
+    <div class="splash-divider"><span>or</span></div>
+
+    <!-- Quick access — secondary -->
     <div class="splash-panel">
       <div class="splash-panel-label">Quick access</div>
       <form class="splash-form" id="splashForm">
@@ -70,23 +111,6 @@
         <div class="splash-team-picker" id="splashTeamPicker"></div>
         <button class="splash-btn" type="submit">Enter Formula Besties →</button>
       </form>
-    </div>
-
-    <!-- Divider -->
-    <div class="splash-divider"><span>or</span></div>
-
-    <!-- Full account -->
-    <div class="splash-panel splash-panel-account">
-      <div class="splash-panel-label">Full account</div>
-      <p class="splash-account-sub">Sign in to unlock your personalised experience.</p>
-      <ul class="splash-account-perks">
-        <li>💬 Watch party chat</li>
-        <li>🔒 Driver vault access</li>
-        <li>📓 GP journal &amp; predictions</li>
-        <li>⭐ Your drivers starred</li>
-      </ul>
-      <a href="/login" class="splash-account-btn">Sign in →</a>
-      <a href="/register" class="splash-account-link">New here? Create account</a>
     </div>
 
   </div>

@@ -99,3 +99,52 @@
     }
   }
 })();
+
+  /* ── Inline Sign In toggle ── */
+  const signInToggle  = document.getElementById('splashSignInToggle');
+  const backBtn       = document.getElementById('splashBackBtn');
+  const accountDefault = document.getElementById('splashAccountDefault');
+  const loginView     = document.getElementById('splashLoginView');
+  const loginFormEl   = document.getElementById('splashLoginFormEl');
+  const loginError    = document.getElementById('splashLoginError');
+  const loginBtn      = document.getElementById('splashLoginBtn');
+
+  if (signInToggle && loginView && accountDefault) {
+    signInToggle.addEventListener('click', () => {
+      accountDefault.style.display = 'none';
+      loginView.style.display = 'block';
+      document.getElementById('splashEmail')?.focus();
+    });
+
+    backBtn?.addEventListener('click', () => {
+      loginView.style.display = 'none';
+      accountDefault.style.display = 'block';
+      if (loginError) loginError.textContent = '';
+    });
+
+    loginFormEl?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!window.supabase) return;
+      const email = document.getElementById('splashEmail')?.value.trim();
+      const password = document.getElementById('splashPassword')?.value;
+      if (!email || !password) return;
+
+      if (loginBtn) { loginBtn.textContent = 'Signing in…'; loginBtn.disabled = true; }
+      if (loginError) loginError.textContent = '';
+
+      const sb = window.supabase.createClient(SB_URL, SB_KEY);
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        if (loginError) loginError.textContent = error.message;
+        if (loginBtn) { loginBtn.textContent = 'Sign in →'; loginBtn.disabled = false; }
+        return;
+      }
+
+      /* Success — get name and close splash */
+      const { data: prof } = await sb.from('profiles').select('display_name, username').eq('id', data.user.id).single();
+      const name = prof?.display_name || prof?.username || data.user.email?.split('@')[0] || 'You';
+      sessionStorage.setItem('pitwall_name', name);
+      hideSplash(name);
+    });
+  }
