@@ -37,7 +37,7 @@
   if (saved) { hideSplash(saved); }
 
   /* 2. Check if logged in with a full Supabase account — auto-skip splash */
-  if (!saved && window.supabase) {
+  if (window.supabase) {
     const sb = window.supabase.createClient(SB_URL, SB_KEY);
     sb.auth.getSession().then(({ data: { session } }) => {
       if (!session) return;

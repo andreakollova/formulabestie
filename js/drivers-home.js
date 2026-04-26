@@ -39,11 +39,12 @@
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
   async function load() {
-    // Fetch fan counts
-    const { data: fans } = await sb.from('fg_driver_fans').select('driver_id')
+    // Fetch fan counts from profiles (fav_driver_id + secondary_driver_id)
+    const { data: allProfiles } = await sb.from('profiles').select('fav_driver_id, secondary_driver_id')
     const counts = {}
-    for (const row of (fans || [])) {
-      counts[row.driver_id] = (counts[row.driver_id] || 0) + 1
+    for (const row of (allProfiles || [])) {
+      if (row.fav_driver_id)       counts[row.fav_driver_id]       = (counts[row.fav_driver_id]       || 0) + 1
+      if (row.secondary_driver_id) counts[row.secondary_driver_id] = (counts[row.secondary_driver_id] || 0) + 1
     }
 
     // Try to get current user's favorite drivers from Supabase session
