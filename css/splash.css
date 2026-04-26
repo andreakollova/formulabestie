@@ -141,9 +141,9 @@
   background: var(--color-red);
   color: #fff;
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: var(--ls-wider);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   border: none;
   border-radius: var(--radius);
