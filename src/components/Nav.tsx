@@ -264,7 +264,7 @@ export default function Nav({ active }: NavProps) {
         <div className="pw-modal-backdrop" onClick={() => setShowLoginModal(false)}>
           <div className="pw-modal" onClick={e => e.stopPropagation()}>
             <button className="pw-modal-close" onClick={() => setShowLoginModal(false)}>✕</button>
-            <div className="pw-modal-eyebrow">◆ Formulka</div>
+            <div className="pw-modal-eyebrow">◆ Formula Besties</div>
             <h2 className="pw-modal-title">Sign in to continue</h2>
             <p className="pw-modal-sub">Create a free account to access your profile, chat, vault, and more.</p>
             <a href="/login" className="pw-modal-btn-primary">Sign in →</a>

@@ -6,7 +6,7 @@
 (function () {
   const JOLPICA  = 'https://api.jolpi.ca/ergast/f1/current';
   const OPENF1   = 'https://api.openf1.org/v1';
-  const CACHE_KEY = 'formulka_f1_cache';
+  const CACHE_KEY = 'formula_besties_f1_cache';
 
   /* ── Team colour map ─────────────────────────────────────────────────── */
   const TEAM_COLOR = {
@@ -318,7 +318,7 @@
       saveCache({ drivers, constructors, lastRace, nextRace });
 
     } catch (e) {
-      console.warn('[Formulka] API error:', e);
+      console.warn('[Formula Besties] API error:', e);
     }
   }
 

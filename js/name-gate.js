@@ -17,7 +17,7 @@
     document.getElementById('greeting').textContent = greeting + ', ' + display;
     document.getElementById('heroName').textContent = display + '\u2019s';
     document.getElementById('footerName').textContent = display;
-    document.title = display + '\u2019s Formulka \u00B7 F1 2026';
+    document.title = display + '\u2019s Formula Besties \u00B7 F1 2026';
     document.getElementById('dateline').textContent =
       DAYS[now.getDay()] + ' \u00B7 ' +
       String(now.getDate()).padStart(2, '0') + ' ' +
