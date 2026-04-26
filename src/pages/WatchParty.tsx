@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -128,6 +128,7 @@ function AvatarStack({ attendees, max = 5 }: { attendees: Attendee[]; max?: numb
 export default function WatchParty() {
   const { slug } = useParams<{ slug: string }>()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [race, setRace] = useState<Race | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -478,6 +479,7 @@ export default function WatchParty() {
     setRace(r => r ? { ...r, status: 'upcoming' } : r)
   }
 
+  if (!user) { navigate("/register"); return null }
   if (loading) return <div className="fg-loading"><div className="fg-spinner" /></div>
   if (!race) return (
     <div style={{ minHeight: '100dvh', background: 'var(--color-paper)' }}>

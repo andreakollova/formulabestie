@@ -141,7 +141,7 @@ export default function Nav({ active }: NavProps) {
   }
 
   function guardedLink(path: string) {
-    if (!user) { setShowLoginModal(true); return }
+    if (!user) { navigate("/register"); return }
     navigate(path)
   }
 

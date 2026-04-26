@@ -148,6 +148,7 @@ export default function Me() {
   }, [user])
 
   if (loading) return <div className="fg-loading"><div className="fg-spinner" /></div>
+  if (!user) { navigate("/register"); return null }
   if (!profile) return null
 
   const teamColor = getTeamColor(profile.team_id ?? '')
