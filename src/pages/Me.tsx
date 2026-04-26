@@ -21,21 +21,26 @@ const COUNTRY_CODES: Record<string, string> = {
 }
 type Race = Database['public']['Tables']['fg_races']['Row']
 
-interface JournalEntry {
-  entry_id: string
+interface RaceJournal {
   race_id: string
   race_name: string
   race_start: string
   round: number
-  mood: string | null
-  journal_note: string | null
+  circuit: string
+  status: string
+  // null if no entry created yet
+  entry_id: string | null
   attended: boolean
-  pred_p1: string | null
-  pred_p2: string | null
-  pred_p3: string | null
-  pred_fastest_lap: string | null
-  pred_dnf: string | null
+  mood_tag: string | null
+  journal_note: string | null   // → journal_entry column
+  pred_p1: string | null        // → prediction_p1
+  pred_p2: string | null        // → prediction_p2
+  pred_p3: string | null        // → prediction_p3
+  pred_fl: string | null        // → prediction_fl
+  pred_dnf: string | null       // → dnf_prediction
 }
+
+const MOODS = ['🔥','😍','😭','😤','🤯','🏆','💔','😴','🎉','👀']
 
 export default function Me() {
   const { user, signOut } = useAuth()
@@ -45,9 +50,14 @@ export default function Me() {
   const [uploading, setUploading] = useState(false)
 
   // GP Journal
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([])
-  const [editingNote, setEditingNote] = useState<string | null>(null)
-  const [noteValue, setNoteValue] = useState('')
+  const [journalRaces, setJournalRaces] = useState<RaceJournal[]>([])
+  const [expandedRace, setExpandedRace] = useState<string | null>(null)
+  const [journalEdit, setJournalEdit] = useState<{
+    journal_note: string; mood_tag: string
+    pred_p1: string; pred_p2: string; pred_p3: string; pred_fl: string; pred_dnf: string
+    attended: boolean
+  } | null>(null)
+  const [savingJournal, setSavingJournal] = useState(false)
 
   // Team picker
   const [teamPickerOpen, setTeamPickerOpen] = useState(false)
@@ -83,37 +93,37 @@ export default function Me() {
       })
   }, [user, navigate])
 
-  // Load journal entries
+  // Load all races + user entries, merge
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('fg_race_entries')
-      .select('id, race_id, mood, journal_note, attended, pred_p1, pred_p2, pred_p3, pred_fastest_lap, pred_dnf, fg_races(name, race_start, round)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (!data) return
-        const entries: JournalEntry[] = (data as unknown[]).map((row: unknown) => {
-          const r = row as Record<string, unknown>
-          const raceRaw = r['fg_races'] as Record<string, unknown> | null
-          return {
-            entry_id: r['id'] as string,
-            race_id: r['race_id'] as string,
-            race_name: raceRaw?.['name'] as string ?? 'Unknown Race',
-            race_start: raceRaw?.['race_start'] as string ?? '',
-            round: raceRaw?.['round'] as number ?? 0,
-            mood: r['mood'] as string | null,
-            journal_note: r['journal_note'] as string | null,
-            attended: r['attended'] as boolean,
-            pred_p1: r['pred_p1'] as string | null,
-            pred_p2: r['pred_p2'] as string | null,
-            pred_p3: r['pred_p3'] as string | null,
-            pred_fastest_lap: r['pred_fastest_lap'] as string | null,
-            pred_dnf: r['pred_dnf'] as string | null,
-          }
-        })
-        setJournalEntries(entries)
+    Promise.all([
+      supabase.from('fg_races').select('id, name, race_start, round, circuit, status').order('round', { ascending: false }),
+      supabase.from('fg_race_entries').select('id, race_id, attended, mood_tag, journal_entry, prediction_p1, prediction_p2, prediction_p3, prediction_fl, dnf_prediction').eq('user_id', user.id),
+    ]).then(([{ data: races }, { data: entries }]) => {
+      if (!races) return
+      const entryMap = new Map((entries ?? []).map((e: Record<string, unknown>) => [e['race_id'] as string, e]))
+      const rows: RaceJournal[] = races.map((r: Record<string, unknown>) => {
+        const e = entryMap.get(r['id'] as string) ?? null
+        return {
+          race_id: r['id'] as string,
+          race_name: r['name'] as string,
+          race_start: r['race_start'] as string,
+          round: r['round'] as number,
+          circuit: r['circuit'] as string,
+          status: r['status'] as string,
+          entry_id: e ? (e['id'] as string) : null,
+          attended: e ? (e['attended'] as boolean) : false,
+          mood_tag: e ? (e['mood_tag'] as string | null) : null,
+          journal_note: e ? (e['journal_entry'] as string | null) : null,
+          pred_p1: e ? (e['prediction_p1'] as string | null) : null,
+          pred_p2: e ? (e['prediction_p2'] as string | null) : null,
+          pred_p3: e ? (e['prediction_p3'] as string | null) : null,
+          pred_fl: e ? (e['prediction_fl'] as string | null) : null,
+          pred_dnf: e ? (e['dnf_prediction'] as string | null) : null,
+        }
       })
+      setJournalRaces(rows)
+    })
   }, [user])
 
   // Load upcoming races + which ones user marked
@@ -122,7 +132,7 @@ export default function Me() {
     supabase
       .from('fg_races')
       .select('*')
-      .eq('status', 'upcoming')
+      .in('status', ['upcoming', 'pre-race'])
       .order('race_start', { ascending: true })
       .limit(3)
       .then(({ data }) => setUpcomingRaces((data ?? []) as Race[]))
@@ -207,30 +217,55 @@ export default function Me() {
     setSavingTeam(false)
   }
 
-  const startEditNote = (entryId: string, current: string | null) => {
-    setEditingNote(entryId)
-    setNoteValue(current ?? '')
+  const openJournal = (row: RaceJournal) => {
+    if (expandedRace === row.race_id) { setExpandedRace(null); setJournalEdit(null); return }
+    setExpandedRace(row.race_id)
+    setJournalEdit({
+      journal_note: row.journal_note ?? '',
+      mood_tag: row.mood_tag ?? '',
+      pred_p1: row.pred_p1 ?? '',
+      pred_p2: row.pred_p2 ?? '',
+      pred_p3: row.pred_p3 ?? '',
+      pred_fl: row.pred_fl ?? '',
+      pred_dnf: row.pred_dnf ?? '',
+      attended: row.attended,
+    })
   }
 
-  const saveNote = async (entryId: string) => {
-    await supabase
-      .from('fg_race_entries')
-      .update({ journal_note: noteValue || null })
-      .eq('id', entryId)
-    setJournalEntries(prev =>
-      prev.map(e => e.entry_id === entryId ? { ...e, journal_note: noteValue || null } : e)
-    )
-    setEditingNote(null)
-  }
-
-  const toggleAttended = async (entryId: string, current: boolean) => {
-    await supabase
-      .from('fg_race_entries')
-      .update({ attended: !current })
-      .eq('id', entryId)
-    setJournalEntries(prev =>
-      prev.map(e => e.entry_id === entryId ? { ...e, attended: !current } : e)
-    )
+  const saveJournal = async (raceId: string) => {
+    if (!user || !journalEdit) return
+    setSavingJournal(true)
+    const payload = {
+      user_id: user.id,
+      race_id: raceId,
+      attended: journalEdit.attended,
+      mood_tag: journalEdit.mood_tag || null,
+      journal_entry: journalEdit.journal_note || null,
+      prediction_p1: journalEdit.pred_p1 || null,
+      prediction_p2: journalEdit.pred_p2 || null,
+      prediction_p3: journalEdit.pred_p3 || null,
+      prediction_fl: journalEdit.pred_fl || null,
+      dnf_prediction: journalEdit.pred_dnf || null,
+    }
+    const { data } = await supabase.from('fg_race_entries').upsert(payload, { onConflict: 'user_id,race_id' }).select('id').single()
+    setJournalRaces(prev => prev.map(r => r.race_id === raceId ? {
+      ...r,
+      entry_id: data?.id ?? r.entry_id,
+      attended: journalEdit.attended,
+      mood_tag: journalEdit.mood_tag || null,
+      journal_note: journalEdit.journal_note || null,
+      pred_p1: journalEdit.pred_p1 || null,
+      pred_p2: journalEdit.pred_p2 || null,
+      pred_p3: journalEdit.pred_p3 || null,
+      pred_fl: journalEdit.pred_fl || null,
+      pred_dnf: journalEdit.pred_dnf || null,
+    } : r))
+    // sync watchingRaceIds
+    if (journalEdit.attended) setWatchingRaceIds(prev => new Set(prev).add(raceId))
+    else setWatchingRaceIds(prev => { const n = new Set(prev); n.delete(raceId); return n })
+    setSavingJournal(false)
+    setExpandedRace(null)
+    setJournalEdit(null)
   }
 
   const startEditDrivers = () => {
@@ -297,7 +332,7 @@ export default function Me() {
     setTogglingRace(null)
   }
 
-  const watchedCount = journalEntries.filter(e => e.attended).length
+  const watchedCount = journalRaces.filter(r => r.attended).length
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--color-paper)', ['--team-accent' as string]: teamColor || 'var(--color-ink)' }}>
@@ -409,7 +444,7 @@ export default function Me() {
             </div>
             <div className="me-hero-stat-div" />
             <div className="me-hero-stat">
-              <div className="me-hero-stat-num">{journalEntries.filter(e => e.journal_note).length}</div>
+              <div className="me-hero-stat-num">{journalRaces.filter(r => r.journal_note).length}</div>
               <div className="me-hero-stat-label">Journal Notes</div>
             </div>
             <div className="me-hero-stat-div" />
@@ -586,97 +621,136 @@ export default function Me() {
             <div className="me-section-rule" />
           </div>
 
-          {journalEntries.length === 0 ? (
+          {journalRaces.length === 0 ? (
             <div className="me-empty">
-              <p>Your race-by-race journal will appear here after each watch party.</p>
-              <Link to="/watch-parties" className="fg-btn fg-btn-outline" style={{ display: 'inline-block', marginTop: 16, width: 'auto', padding: '10px 20px' }}>
-                Browse Watch Parties →
-              </Link>
+              <p>No races in the calendar yet.</p>
             </div>
           ) : (
             <div className="me-journal-list">
-              {journalEntries.map(entry => (
-                <div key={entry.entry_id} className={`me-journal-card${entry.attended ? '' : ' me-journal-card-dim'}`}>
-                  <div className="me-journal-card-top">
-                    <div className="me-journal-round">R{String(entry.round).padStart(2, '0')}</div>
-                    <div className="me-journal-main">
-                      <div className="me-journal-race-name">
-                        {entry.mood && <span className="me-journal-mood">{entry.mood}</span>}
-                        {entry.race_name}
+              {journalRaces.map(row => {
+                const isExpanded = expandedRace === row.race_id
+                const hasEntry = !!row.entry_id
+                const isPast = row.status === 'finished' || row.status === 'post-race'
+                return (
+                  <div key={row.race_id} className={`me-journal-card${isExpanded ? ' me-journal-card-open' : ''}`}>
+
+                    {/* Row header — click to expand */}
+                    <button className="me-journal-card-top" onClick={() => openJournal(row)}>
+                      <div className="me-journal-round">R{String(row.round).padStart(2, '0')}</div>
+                      <div className="me-journal-main">
+                        <div className="me-journal-race-name">
+                          {row.mood_tag && <span className="me-journal-mood">{row.mood_tag}</span>}
+                          {row.race_name}
+                        </div>
+                        <div className="me-journal-meta">
+                          {row.circuit} · {new Date(row.race_start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </div>
                       </div>
-                      <div className="me-journal-meta">
-                        {entry.race_start && new Date(entry.race_start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      <div className="me-journal-indicators">
+                        {row.attended && <span className="me-jind me-jind-watched">Watched</span>}
+                        {row.journal_note && <span className="me-jind">✍</span>}
+                        {(row.pred_p1 || row.pred_p2 || row.pred_p3) && <span className="me-jind">📊</span>}
+                        {!hasEntry && isPast && <span className="me-jind me-jind-add">+ Add note</span>}
+                        {!hasEntry && !isPast && <span className="me-jind me-jind-add">+ Predict</span>}
                       </div>
-                    </div>
-                    <button
-                      className={`me-watched-toggle${entry.attended ? ' me-watched-toggle-on' : ''}`}
-                      onClick={() => toggleAttended(entry.entry_id, entry.attended)}
-                      title={entry.attended ? 'Mark as not watched' : 'Mark as watched'}
-                    >
-                      {entry.attended ? 'Watched ✓' : 'Mark watched'}
+                      <span className="me-journal-chevron">{isExpanded ? '▲' : '▼'}</span>
                     </button>
-                  </div>
 
-                  {/* Predictions */}
-                  {(entry.pred_p1 || entry.pred_p2 || entry.pred_p3 || entry.pred_fastest_lap || entry.pred_dnf) && (
-                    <div className="me-journal-preds">
-                      <div className="me-journal-preds-label">My Predictions</div>
-                      <div className="me-journal-preds-grid">
-                        {[
-                          { key: 'pred_p1' as const,         icon: '🏆', label: 'P1' },
-                          { key: 'pred_p2' as const,         icon: '🥈', label: 'P2' },
-                          { key: 'pred_p3' as const,         icon: '🥉', label: 'P3' },
-                          { key: 'pred_fastest_lap' as const, icon: '⚡', label: 'FL' },
-                          { key: 'pred_dnf' as const,        icon: '💔', label: 'DNF' },
-                        ].map(({ key, icon, label }) => {
-                          const driverId = entry[key]
-                          if (!driverId) return null
-                          const driver = DRIVERS.find(d => d.id === driverId)
-                          if (!driver) return null
-                          const teamColor = getTeamColor(driver.team)
-                          return (
-                            <div key={key} className="me-journal-pred-item">
-                              <span className="me-journal-pred-icon">{icon}</span>
-                              <div className="me-journal-pred-driver" style={{ borderColor: teamColor }}>
-                                {driver.photo
-                                  ? <img src={driver.photo} alt="" />
-                                  : driver.name[0]
-                                }
-                              </div>
-                              <div className="me-journal-pred-info">
-                                <span className="me-journal-pred-label">{label}</span>
-                                <span className="me-journal-pred-name">{driver.name.split(' ').slice(-1)[0]}</span>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
+                    {/* Expanded editor */}
+                    {isExpanded && journalEdit && (
+                      <div className="me-journal-editor">
 
-                  <div className="me-journal-note-area">
-                    {editingNote === entry.entry_id ? (
-                      <textarea
-                        className="me-journal-textarea"
-                        value={noteValue}
-                        onChange={e => setNoteValue(e.target.value)}
-                        onBlur={() => saveNote(entry.entry_id)}
-                        placeholder="Write your thoughts about this race…"
-                        autoFocus
-                        rows={3}
-                      />
-                    ) : (
-                      <div
-                        className={`me-journal-note${entry.journal_note ? '' : ' me-journal-note-empty'}`}
-                        onClick={() => startEditNote(entry.entry_id, entry.journal_note)}
-                        title="Click to edit note"
-                      >
-                        {entry.journal_note ?? 'Add a note about this race…'}
+                        {/* Attended toggle */}
+                        <div className="me-je-row">
+                          <label className="me-je-label">Watched this race?</label>
+                          <button
+                            className={`me-watched-toggle${journalEdit.attended ? ' me-watched-toggle-on' : ''}`}
+                            onClick={() => setJournalEdit(p => p ? { ...p, attended: !p.attended } : p)}
+                            type="button"
+                          >
+                            {journalEdit.attended ? 'Watched ✓' : 'Mark as watched'}
+                          </button>
+                        </div>
+
+                        {/* Mood */}
+                        <div className="me-je-row">
+                          <label className="me-je-label">Mood</label>
+                          <div className="me-je-moods">
+                            {MOODS.map(m => (
+                              <button
+                                key={m}
+                                type="button"
+                                className={`me-je-mood-btn${journalEdit.mood_tag === m ? ' me-je-mood-active' : ''}`}
+                                onClick={() => setJournalEdit(p => p ? { ...p, mood_tag: p.mood_tag === m ? '' : m } : p)}
+                              >{m}</button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Predictions */}
+                        <div className="me-je-preds">
+                          <label className="me-je-label">Predictions</label>
+                          <div className="me-je-pred-grid">
+                            {([
+                              { key: 'pred_p1' as const, label: '🏆 P1' },
+                              { key: 'pred_p2' as const, label: '🥈 P2' },
+                              { key: 'pred_p3' as const, label: '🥉 P3' },
+                              { key: 'pred_fl' as const, label: '⚡ FL' },
+                              { key: 'pred_dnf' as const, label: '💔 DNF' },
+                            ] as { key: keyof typeof journalEdit; label: string }[]).map(({ key, label }) => (
+                              <div key={key} className="me-je-pred-item">
+                                <span className="me-je-pred-label">{label}</span>
+                                <select
+                                  className="pred-select"
+                                  value={journalEdit[key] as string}
+                                  onChange={e => setJournalEdit(p => p ? { ...p, [key]: e.target.value } : p)}
+                                >
+                                  <option value="">—</option>
+                                  {DRIVERS.map(d => (
+                                    <option key={d.id} value={d.id}>#{d.number} {d.name.split(' ').slice(-1)[0]}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Note */}
+                        <div className="me-je-row">
+                          <label className="me-je-label">Your note</label>
+                          <textarea
+                            className="me-journal-textarea me-je-textarea"
+                            value={journalEdit.journal_note}
+                            onChange={e => setJournalEdit(p => p ? { ...p, journal_note: e.target.value } : p)}
+                            placeholder="How was this race? Your thoughts, your feelings…"
+                            rows={3}
+                          />
+                        </div>
+
+                        {/* Save */}
+                        <div className="me-je-actions">
+                          <button
+                            className="fg-btn fg-btn-primary"
+                            style={{ width: 'auto', padding: '9px 22px' }}
+                            onClick={() => saveJournal(row.race_id)}
+                            disabled={savingJournal}
+                          >
+                            {savingJournal ? 'Saving…' : 'Save entry'}
+                          </button>
+                          <button
+                            className="fg-btn fg-btn-outline"
+                            style={{ width: 'auto', padding: '9px 16px' }}
+                            onClick={() => { setExpandedRace(null); setJournalEdit(null) }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -1197,13 +1271,20 @@ export default function Me() {
           overflow: hidden;
         }
         .me-journal-card { background: var(--color-white); }
-        .me-journal-card-dim { opacity: 0.5; }
+        .me-journal-card-open { background: #fafafa; }
         .me-journal-card-top {
           display: flex;
-          align-items: flex-start;
+          align-items: center;
           gap: 14px;
-          padding: 16px 18px 12px;
+          padding: 14px 18px;
+          width: 100%;
+          background: none;
+          border: none;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.1s;
         }
+        .me-journal-card-top:hover { background: #f5f5f5; }
         .me-journal-round {
           font-family: var(--font-mono);
           font-size: 11px;
@@ -1334,22 +1415,119 @@ export default function Me() {
           line-height: 1;
         }
 
+        .me-journal-indicators {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          margin-left: auto;
+          flex-shrink: 0;
+        }
+        .me-jind {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          padding: 2px 7px;
+          border-radius: 20px;
+          background: var(--color-paper-2);
+          color: var(--color-muted);
+        }
+        .me-jind-watched {
+          background: var(--color-ink);
+          color: #fff;
+        }
+        .me-jind-add {
+          background: none;
+          border: 1px dashed var(--color-border);
+          color: var(--color-muted);
+        }
+        .me-journal-chevron {
+          font-size: 9px;
+          color: var(--color-muted);
+          flex-shrink: 0;
+          margin-left: 4px;
+        }
+
+        /* Journal editor */
+        .me-journal-editor {
+          border-top: 1px solid var(--color-border);
+          padding: 18px 18px 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          background: #fafafa;
+        }
+        .me-je-row {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+        }
+        .me-je-label {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+        }
+        .me-je-moods {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .me-je-mood-btn {
+          font-size: 20px;
+          background: none;
+          border: 2px solid transparent;
+          border-radius: var(--radius);
+          padding: 4px 6px;
+          cursor: pointer;
+          line-height: 1;
+          transition: border-color 0.1s, background 0.1s;
+        }
+        .me-je-mood-btn:hover { background: var(--color-border); }
+        .me-je-mood-active {
+          border-color: var(--color-ink) !important;
+          background: #fff !important;
+        }
+        .me-je-preds { display: flex; flex-direction: column; gap: 7px; }
+        .me-je-pred-grid {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .me-je-pred-item {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          flex: 1;
+          min-width: 100px;
+        }
+        .me-je-pred-label {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--color-muted);
+        }
+        .me-je-textarea {
+          border: 1px solid var(--color-border) !important;
+          border-radius: var(--radius) !important;
+          padding: 10px 12px !important;
+          background: #fff !important;
+          resize: vertical !important;
+        }
+        .me-je-actions {
+          display: flex;
+          gap: 8px;
+          padding-top: 4px;
+        }
+
         .me-journal-note-area {
           border-top: 1px solid var(--color-border);
           padding: 12px 18px;
           background: var(--color-paper-2);
-        }
-        .me-journal-note {
-          font-family: var(--font-sans);
-          font-size: 14px;
-          line-height: 1.6;
-          color: var(--color-ink);
-          cursor: text;
-          min-height: 36px;
-        }
-        .me-journal-note-empty {
-          color: var(--color-muted);
-          font-style: italic;
         }
         .me-journal-textarea {
           width: 100%;
@@ -1362,6 +1540,7 @@ export default function Me() {
           color: var(--color-ink);
           resize: none;
           outline: none;
+          box-sizing: border-box;
         }
 
         /* Mobile */
